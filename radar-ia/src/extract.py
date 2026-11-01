@@ -7,7 +7,7 @@ load_dotenv()
 KEY = os.getenv("GOOGLE_PLACES_API_KEY")
 HEADERS = {"X-Goog-Api-Key": KEY, "Content-Type": "application/json"}
 FIELDS_SEARCH = "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.regularOpeningHours,places.websiteUri,places.googleMapsUri,nextPageToken"
-FIELDS_DETAILS = "places.reviews,places.rating,places.userRatingCount,places.regularOpeningHours,places.websiteUri,places.nationalPhoneNumber,places.displayName,places.formattedAddress,places.googleMapsUri"
+FIELDS_DETAILS = "reviews,rating,userRatingCount,regularOpeningHours,websiteUri,nationalPhoneNumber,displayName,formattedAddress,googleMapsUri"
 
 def text_search(query, max_results=20):
     """Devuelve lista de place_id para una consulta tipo 'dentistas en Madrid'."""
@@ -28,7 +28,8 @@ def text_search(query, max_results=20):
 def fetch_details(place_id):
     url = f"https://places.googleapis.com/v1/places/{place_id}"
     r = requests.get(url, headers={**HEADERS, "X-Goog-FieldMask": FIELDS_DETAILS}, timeout=30)
-    r.raise_for_status()
+    if r.status_code != 200:
+        raise RuntimeError(f"Google devolvio {r.status_code}: {r.text[:300]}")
     p = r.json()
     hours = p.get("regularOpeningHours", {})
     weekday = (hours.get("weekdayDescriptions") or [])
