@@ -26,7 +26,7 @@ def score(b):
         p += 20; motivos.append(f"{b['resenas_mes']} reseñas/mes → volumen real")
     if b["vertical"] in CALIENTE:
         p += 15; motivos.append(f"vertical caliente: {b['vertical']}")
-    if b["citas_dificiles_count"] >= 2:
+    if b["citas_dificiles_count"] >= 1:
         p += 10; motivos.append("citas difíciles en reseñas → agente de citas")
     if not b["tiene_reserva_online"]:
         p += 15; motivos.append("sin reserva online")
