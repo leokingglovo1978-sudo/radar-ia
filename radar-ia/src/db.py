@@ -2,6 +2,9 @@ import sqlite3, os
 
 DB = os.path.join(os.path.dirname(__file__), "..", "data", "radar.db")
 
+NUEVAS = [("lat","REAL"),("lng","REAL"),("ciudad","TEXT"),
+          ("perdida_mes","REAL"),("propuesta","TEXT")]
+
 def get():
     os.makedirs(os.path.dirname(DB), exist_ok=True)
     con = sqlite3.connect(DB)
@@ -13,10 +16,16 @@ def get():
         sucursales INTEGER DEFAULT 1, no_contesta_count INTEGER DEFAULT 0,
         citas_dificiles_count INTEGER DEFAULT 0, quote TEXT,
         score INTEGER DEFAULT 0, tier TEXT, motivos TEXT, maps_url TEXT,
-        lat REAL, lng REAL, ciudad TEXT)""")
+        lat REAL, lng REAL, ciudad TEXT, perdida_mes REAL, propuesta TEXT)""")
     con.execute("""CREATE TABLE IF NOT EXISTS reviews(
         business_id TEXT, autor TEXT, texto TEXT, fecha TEXT,
         estrellas INTEGER, detectado INTEGER DEFAULT 0)""")
+    # migracion: aniade columnas nuevas a bases de datos antiguas
+    existentes = {r[1] for r in con.execute("PRAGMA table_info(businesses)")}
+    for col, tipo in NUEVAS:
+        if col not in existentes:
+            con.execute(f"ALTER TABLE businesses ADD COLUMN {col} {tipo}")
+    con.commit()
     return con
 
 def upsert_business(con, b):

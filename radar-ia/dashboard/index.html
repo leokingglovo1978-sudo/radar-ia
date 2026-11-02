@@ -29,6 +29,8 @@
   a { color:#38bdf8; text-decoration:none; } a:hover { text-decoration:underline; }
   details summary { cursor:pointer; color:#64748b; font-size:11px; }
   .tel { color:#a5b4fc; font-weight:600; white-space:nowrap; }
+  .euros { color:#4ade80; font-weight:800; font-size:14px; white-space:nowrap; }
+  .propuesta { color:#e2e8f0; font-size:12px; max-width:150px; }
   #cargando { padding:60px; text-align:center; color:#64748b; }
   #mapa { height:420px; margin:0 24px 20px; border-radius:12px; border:1px solid #334155; display:none; z-index:1; }
   .leaflet-popup-content-wrapper { background:#1e293b; color:#e2e8f0; border-radius:10px; }
@@ -37,6 +39,7 @@
   .popup-score { font-weight:800; font-size:16px; }
   .popup-mot { color:#94a3b8; font-size:12px; margin-top:4px; }
 </style>
+<base target="_blank">
 </head>
 <body>
 <header>
@@ -65,7 +68,7 @@
 <div id="cargando">Cargando leads desde Supabase…</div>
 <table id="tabla" style="display:none">
   <thead><tr>
-    <th>Score</th><th>Negocio</th><th>Teléfono</th><th>Vertical</th><th>Señales detectadas</th><th>Frase para el pitch</th><th>Mapa</th>
+    <th>Score</th><th>Negocio</th><th>Teléfono</th><th>Vertical</th><th>Señales detectadas</th><th>Frase para el pitch</th><th>€ perdidos/mes</th><th>Propuesta</th><th>Mapa</th>
   </tr></thead>
   <tbody id="filas"></tbody>
 </table>
@@ -96,6 +99,8 @@ function render(){
       <td>${d.categoria || "—"}</td>
       <td class="motivos">${d.motivos || ""}</td>
       <td class="quote">${d.quote ? "«" + d.quote + "»" : "—"}</td>
+      <td class="euros">${d.perdida_mes ? "~" + d.perdida_mes + " €" : "—"}</td>
+      <td class="propuesta">${d.propuesta || "—"}</td>
       <td>${d.maps_url ? `<a href="${d.maps_url}" target="_blank">Google Maps ↗</a>` : "—"}</td>
     </tr>`).join("");
 }
@@ -131,7 +136,7 @@ function pintarMapa(data){
     const color = d.score >= 70 ? "#ef4444" : d.score >= 45 ? "#f59e0b" : "#64748b";
     const r = d.score >= 70 ? 11 : d.score >= 45 ? 8 : 6;
     const m = L.circleMarker([d.lat, d.lng], {radius:r, fillColor:color, color:"#0f172a", weight:2, opacity:1, fillOpacity:0.85}).addTo(mapa);
-    m.bindPopup(`<b>${d.nombre}</b><br><span class="popup-score" style="color:${color}">${d.score} pts — ${d.tier}</span><div class="popup-mot">${d.motivos||""}</div>${d.telefono?`<br>📞 ${d.telefono}`:""}${d.maps_url?`<br><a href="${d.maps_url}" target="_blank">Google Maps ↗</a>`:""}`);
+    m.bindPopup(`<b>${d.nombre}</b><br><span class="popup-score" style="color:${color}">${d.score} pts — ${d.tier}</span><div class="popup-mot">${d.motivos||""}</div><div class="popup-mot" style="color:#4ade80">Pierde ~${d.perdida_mes||"?"} EUR/mes | Propuesta: ${d.propuesta||""}</div>${d.telefono?`<br>📞 ${d.telefono}`:""}${d.maps_url?`<br><a href="${d.maps_url}" target="_blank">Google Maps ↗</a>`:""}`);
     bounds.push([d.lat, d.lng]);
   });
   mapa.fitBounds(bounds, {padding:[30,30]});
