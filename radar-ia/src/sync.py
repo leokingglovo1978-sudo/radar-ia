@@ -9,7 +9,7 @@ SB = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_KEY"))
 COLS_B = ["id","nombre","categoria","direccion","telefono","web","rating",
           "total_resenas","resenas_mes","tiene_reserva_online","abre_extendido",
           "sucursales","no_contesta_count","citas_dificiles_count","quote",
-          "score","tier","motivos","maps_url"]
+          "score","tier","motivos","maps_url","lat","lng","ciudad"]
 COLS_R = ["business_id","autor","texto","fecha","estrellas","detectado"]
 
 def rows_dicts(cur, cols):

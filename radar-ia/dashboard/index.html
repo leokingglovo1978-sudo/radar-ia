@@ -30,8 +30,13 @@
   details summary { cursor:pointer; color:#64748b; font-size:11px; }
   .tel { color:#a5b4fc; font-weight:600; white-space:nowrap; }
   #cargando { padding:60px; text-align:center; color:#64748b; }
+  #mapa { height:420px; margin:0 24px 20px; border-radius:12px; border:1px solid #334155; display:none; z-index:1; }
+  .leaflet-popup-content-wrapper { background:#1e293b; color:#e2e8f0; border-radius:10px; }
+  .leaflet-popup-tip { background:#1e293b; }
+  .leaflet-popup-content b { color:#38bdf8; }
+  .popup-score { font-weight:800; font-size:16px; }
+  .popup-mot { color:#94a3b8; font-size:12px; margin-top:4px; }
 </style>
-<base target="_blank">
 </head>
 <body>
 <header>
@@ -56,6 +61,7 @@
   <input id="buscar" placeholder="🔍 Buscar por nombre...">
 </div>
 
+<div id="mapa"></div>
 <div id="cargando">Cargando leads desde Supabase…</div>
 <table id="tabla" style="display:none">
   <thead><tr>
@@ -64,11 +70,13 @@
   <tbody id="filas"></tbody>
 </table>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ==== CONFIGURA AQUÍ (la clave anon es pública y segura: solo lectura) ====
-const SUPABASE_URL = "https://yjiifqgpkoiixclzdofz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqaWlmcWdwa29paXhjbHpkb2Z6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzUyOTA1MCwiZXhwIjoyMTA5MTA1MDUwfQ.pngjTXZdM_TFsu0X3CVmsUImMq1lYXzFrmw-RXvR4Fw";
+const SUPABASE_URL = "PEGA_AQUI_TU_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "PEGA_AQUI_TU_ANON_KEY";
 // =======================================================================
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let datos = [], filtro = "TODOS", busqueda = "";
@@ -98,6 +106,7 @@ async function cargar(){
   if (error) { carg.innerHTML = "❌ Error: " + error.message + "<br>Revisa SUPABASE_URL y la anon key en el código."; return; }
   datos = data;
   carg.style.display = "none";
+  pintarMapa(data);
   document.getElementById("tabla").style.display = "table";
   document.getElementById("sTotal").textContent = data.length;
   document.getElementById("sHot").textContent = data.filter(d=>d.tier==="CALIENTE").length;
@@ -110,6 +119,23 @@ document.querySelectorAll(".filtro").forEach(b => b.onclick = () => {
   document.querySelectorAll(".filtro").forEach(x => x.classList.remove("activo"));
   b.classList.add("activo"); filtro = b.dataset.f; render();
 });
+let mapa;
+function pintarMapa(data){
+  const conCoords = data.filter(d => d.lat && d.lng);
+  if (!conCoords.length) return;
+  document.getElementById("mapa").style.display = "block";
+  mapa = L.map("mapa");
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {attribution:"© OpenStreetMap", maxZoom:19}).addTo(mapa);
+  const bounds = [];
+  conCoords.forEach(d => {
+    const color = d.score >= 70 ? "#ef4444" : d.score >= 45 ? "#f59e0b" : "#64748b";
+    const r = d.score >= 70 ? 11 : d.score >= 45 ? 8 : 6;
+    const m = L.circleMarker([d.lat, d.lng], {radius:r, fillColor:color, color:"#0f172a", weight:2, opacity:1, fillOpacity:0.85}).addTo(mapa);
+    m.bindPopup(`<b>${d.nombre}</b><br><span class="popup-score" style="color:${color}">${d.score} pts — ${d.tier}</span><div class="popup-mot">${d.motivos||""}</div>${d.telefono?`<br>📞 ${d.telefono}`:""}${d.maps_url?`<br><a href="${d.maps_url}" target="_blank">Google Maps ↗</a>`:""}`);
+    bounds.push([d.lat, d.lng]);
+  });
+  mapa.fitBounds(bounds, {padding:[30,30]});
+}
 document.getElementById("buscar").oninput = e => { busqueda = e.target.value.toLowerCase(); render(); };
 cargar();
 </script>

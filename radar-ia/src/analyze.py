@@ -10,7 +10,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 PROMPT = """Eres un analista de negocios. Lee estas reseñas de Google de un negocio y devuelve SOLO JSON válido con:
 - "no_contesta": nº de reseñas que se quejan de que NO contestan WhatsApp/teléfono/mensajes o tardanza extrema en responder
 - "citas_dificiles": nº de reseñas que mencionan que es difícil conseguir cita/reserva/turno
-- "quote": la frase textual más contundente de queja sobre no contestar (o "")
+- "quote": la frase textual más contundente EN ESPAÑOL que queje de que NO contestan teléfono/WhatsApp o de que es difícil conseguir cita/reserva. Si ninguna reseña se queja de eso, devuelve "" (string vacío)
 Reseñas:
 """
 

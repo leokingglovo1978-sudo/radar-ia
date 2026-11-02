@@ -7,7 +7,7 @@ load_dotenv()
 KEY = os.getenv("GOOGLE_PLACES_API_KEY")
 HEADERS = {"X-Goog-Api-Key": KEY, "Content-Type": "application/json"}
 FIELDS_SEARCH = "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.regularOpeningHours,places.websiteUri,places.googleMapsUri,nextPageToken"
-FIELDS_DETAILS = "reviews,rating,userRatingCount,regularOpeningHours,websiteUri,nationalPhoneNumber,displayName,formattedAddress,googleMapsUri"
+FIELDS_DETAILS = "reviews,rating,userRatingCount,regularOpeningHours,websiteUri,nationalPhoneNumber,displayName,formattedAddress,googleMapsUri,location"
 
 def text_search(query, max_results=20):
     """Devuelve lista de place_id para una consulta tipo 'dentistas en Madrid'."""
@@ -53,7 +53,7 @@ def fetch_details(place_id):
         "maps_url": p.get("googleMapsUri", ""),
     }, p.get("reviews", [])
 
-def extract(query, max_results=20):
+def extract(query, max_results=20, ciudad=""):
     con = get()
     for pid in text_search(query, max_results):
         b, reviews = fetch_details(pid)

@@ -12,7 +12,8 @@ def get():
         tiene_reserva_online INTEGER, abre_extendido INTEGER,
         sucursales INTEGER DEFAULT 1, no_contesta_count INTEGER DEFAULT 0,
         citas_dificiles_count INTEGER DEFAULT 0, quote TEXT,
-        score INTEGER DEFAULT 0, tier TEXT, motivos TEXT, maps_url TEXT)""")
+        score INTEGER DEFAULT 0, tier TEXT, motivos TEXT, maps_url TEXT,
+        lat REAL, lng REAL, ciudad TEXT)""")
     con.execute("""CREATE TABLE IF NOT EXISTS reviews(
         business_id TEXT, autor TEXT, texto TEXT, fecha TEXT,
         estrellas INTEGER, detectado INTEGER DEFAULT 0)""")

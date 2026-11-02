@@ -51,6 +51,7 @@ if __name__ == "__main__":
     if cmd == "demo": demo()
     elif cmd == "extract":
         q = sys.argv[2]; mx = int(sys.argv[sys.argv.index("--max")+1]) if "--max" in sys.argv else 20
-        from extract import extract; print("Extrayendo…"); extract(q, mx)
+        cd = sys.argv[sys.argv.index("--ciudad")+1] if "--ciudad" in sys.argv else ""
+        from extract import extract; print("Extrayendo…"); extract(q, mx, cd)
     elif cmd == "analyze": from analyze import run; print("Analizando reseñas…"); run()
     elif cmd == "score": from score import run; run()
