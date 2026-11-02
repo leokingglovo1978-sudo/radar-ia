@@ -49,6 +49,31 @@
   <span class="pill p-gray">⚪ BAJO</span>
 </header>
 
+<div id="auth" style="display:none; padding:16px 24px;">
+  <div class="card" style="max-width:360px;">
+    <b>🔒 Acceso de administrador</b>
+    <form id="loginForm" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+      <input id="loginEmail" type="email" placeholder="tu email" required style="width:100%">
+      <input id="loginPass" type="password" placeholder="contraseña" required style="width:100%">
+      <button class="filtro activo" type="submit" style="width:100%">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<div id="scanner" style="display:none; padding:16px 24px;">
+  <div class="card" style="max-width:660px;">
+    <b>📡 Nuevo escaneo</b> <span id="userEmail" style="color:#64748b; font-size:12px;"></span>
+    <button id="btnLogout" class="filtro" style="float:right; padding:4px 12px; font-size:12px;">Cerrar sesión</button>
+    <form id="scanForm" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+      <input id="scanQuery" placeholder="Qué buscar: peluquerías, talleres, clínicas..." required style="flex:2; min-width:220px;">
+      <input id="scanCiudad" placeholder="Ciudad" value="Almería" style="flex:1; min-width:110px;">
+      <input id="scanMax" type="number" value="20" min="5" max="25" style="width:70px;" title="Máx 25 por escaneo">
+      <button class="filtro activo" type="submit">🚀 Escanear</button>
+    </form>
+    <div id="scanMsg" style="margin-top:10px; font-size:13px; color:#94a3b8;">Escribe sector y ciudad, y el radar hará el resto (búsqueda + análisis IA + puntuación + euros). Tarda 1-2 minutos.</div>
+  </div>
+</div>
+
 <div class="stats">
   <div class="card"><b id="sTotal">–</b>negocios</div>
   <div class="card"><b id="sHot" style="color:#f87171">–</b>calientes</div>
@@ -142,6 +167,42 @@ function pintarMapa(data){
   mapa.fitBounds(bounds, {padding:[30,30]});
 }
 document.getElementById("buscar").oninput = e => { busqueda = e.target.value.toLowerCase(); render(); };
+// ===== AUTH + SCANNER (solo administrador logueado) =====
+const sbAuth = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+function authUI(session){
+  document.getElementById("auth").style.display = session ? "none" : "block";
+  document.getElementById("scanner").style.display = session ? "block" : "none";
+  if (session) document.getElementById("userEmail").textContent = "(" + session.user.email + ")";
+}
+document.getElementById("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const { error } = await sbAuth.auth.signInWithPassword({
+    email: document.getElementById("loginEmail").value.trim(),
+    password: document.getElementById("loginPass").value });
+  if (error) alert("Error de acceso: " + error.message);
+};
+document.getElementById("btnLogout").onclick = async () => { await sbAuth.auth.signOut(); };
+document.getElementById("scanForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("scanMsg");
+  const { data: { session } } = await sbAuth.auth.getSession();
+  if (!session) { msg.textContent = "Sesión expirada, vuelve a entrar."; return; }
+  msg.style.color = "#fbbf24"; msg.textContent = "⏳ Escaneando… (1-2 minutos, no cierres la página)";
+  try {
+    const r = await fetch("/api/scan", { method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
+      body: JSON.stringify({ query: document.getElementById("scanQuery").value.trim(),
+                             ciudad: document.getElementById("scanCiudad").value.trim(),
+                             max: Number(document.getElementById("scanMax").value) }) });
+    const j = await r.json();
+    if (!r.ok) { msg.style.color = "#f87171"; msg.textContent = "Error: " + (j.error || r.status); return; }
+    msg.style.color = "#4ade80";
+    msg.textContent = "✅ Escaneados " + j.escaneados + " negocios (" + j.calientes + " calientes). Total en base: " + j.total_bd;
+    await cargar();
+  } catch (err) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + err.message; }
+};
+(async () => { const { data: { session } } = await sbAuth.auth.getSession(); authUI(session);
+  sbAuth.auth.onAuthStateChange((_e, s) => authUI(s)); })();
 cargar();
 </script>
 </body>
