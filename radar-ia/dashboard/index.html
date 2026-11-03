@@ -74,6 +74,18 @@
   </div>
 </div>
 
+<div style="padding:16px 24px;">
+  <div class="card" style="max-width:960px;">
+    <b>🔥🔥 Radar de intención</b> <span style="color:#64748b; font-size:12px;">negocios buscando activamente IA: ofertas de empleo, licitaciones, preguntas públicas</span>
+    <button id="btnIntent" class="filtro activo" style="margin-left:10px;">Actualizar</button>
+    <span id="intentMsg" style="font-size:12px; color:#94a3b8; margin-left:8px;">Trae las señales de tus Google Alerts (tarda unos segundos)</span>
+    <table style="width:100%; margin:10px 0 0; font-size:12px;">
+      <thead><tr><th style="padding:6px 8px;">Fecha</th><th style="text-align:left;">Señal (click para verla)</th><th style="text-align:left;">Origen</th></tr></thead>
+      <tbody id="filasIntento"><tr><td colspan="3" style="color:#475569; padding:8px;">Aún no hay señales. Configura tus Google Alerts (te expliqué cómo abajo) y pulsa Actualizar.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
 <div class="stats">
   <div class="card"><b id="sTotal">–</b>negocios</div>
   <div class="card"><b id="sHot" style="color:#f87171">–</b>calientes</div>
@@ -206,7 +218,33 @@ document.getElementById("scanForm").onsubmit = async (e) => {
 };
 (async () => { const { data: { session } } = await sbAuth.auth.getSession(); authUI(session);
   sbAuth.auth.onAuthStateChange((_e, s) => authUI(s)); })();
+// ===== RADAR DE INTENCION =====
+async function cargarIntentos(){
+  const { data } = await sb.from("intent_signals").select("*").order("fecha", {ascending:false}).limit(50);
+  const tb = document.getElementById("filasIntento");
+  if (!data || !data.length){ tb.innerHTML = "<tr><td colspan='3' style='color:#475569;padding:8px;'>Sin senyales todavia. Configura tus Google Alerts y pulsa Actualizar.</td></tr>"; return; }
+  tb.innerHTML = data.map(d => `<tr>
+    <td style="white-space:nowrap; color:#94a3b8; padding:6px 8px;">${(d.fecha||"").slice(0,10)}</td>
+    <td><a href="${d.link}" target="_blank" style="color:#fbbf24;">${d.titulo}</a><div style="color:#64748b; font-size:11px;">${d.keyword||""}</div></td>
+    <td style="color:#94a3b8;">${d.fuente||""}</td>
+  </tr>`).join("");
+}
+document.getElementById("btnIntent").onclick = async () => {
+  const msg = document.getElementById("intentMsg");
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { msg.textContent = "Sesion expirada, vuelve a entrar."; return; }
+  msg.style.color = "#fbbf24"; msg.textContent = "Consultando Google Alerts… (10-20 segundos)";
+  try {
+    const r = await fetch("/api/intent", { method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token } });
+    const j = await r.json();
+    msg.style.color = r.ok ? "#4ade80" : "#f87171";
+    msg.textContent = r.ok ? ("OK - " + j.mensaje) : ("Error: " + (j.error || r.status));
+    await cargarIntentos();
+  } catch (e) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + e.message; }
+};
 cargar();
+cargarIntentos();
 </script>
 </body>
 </html>
