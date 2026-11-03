@@ -92,7 +92,8 @@ module.exports = async (req, res) => {
   const F_SEARCH = "places.id,places.displayName,nextPageToken";
   let ids = [], pageToken = null;
   while (ids.length < maxN) {
-    const body = { textQuery: query, pageSize: 20, languageCode: "es" };
+    const q = ciudad ? (query + " en " + ciudad) : query;
+    const body = { textQuery: q, pageSize: 20, languageCode: "es" };
     if (pageToken) body.pageToken = pageToken;
     const j = await gpost("https://places.googleapis.com/v1/places:searchText", body, F_SEARCH);
     if (j.error) return res.status(502).json({ error: "Google: " + (j.error.message || "error") });
