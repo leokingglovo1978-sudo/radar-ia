@@ -91,6 +91,7 @@
 
 <div id="mapa"></div>
 <div id="cargando">Cargando leads desde Supabase…</div>
+<div id="debug" style="padding:4px 24px; font-size:11px; color:#475569;"></div>
 <table id="tabla" style="display:none">
   <thead><tr>
     <th>Score</th><th>Negocio</th><th>Teléfono</th><th>Vertical</th><th>Señales detectadas</th><th>Frase para el pitch</th><th>€ perdidos/mes</th><th>Propuesta</th><th>Mapa</th>
@@ -104,7 +105,7 @@
 <script>
 // ==== CONFIGURA AQUÍ (la clave anon es pública y segura: solo lectura) ====
 const SUPABASE_URL = "https://yjiifqgpkoiixclzdofz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqaWlmcWdwa29paXhjbHpkb2Z6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzUyOTA1MCwiZXhwIjoyMTA5MTA1MDUwfQ.pngjTXZdM_TFsu0X3CVmsUImMq1lYXzFrmw-RXvR4Fw";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqaWlmcWdwa29paXhjbHpkb2Z6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MjkwNTAsImV4cCI6MjEwOTEwNTA1MH0.Rz_P8vGIWSLBLPf4ntrpA691a9QJsaMtUnfSV1lOGzk";
 // =======================================================================
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let datos = [], filtro = "TODOS", busqueda = "";
@@ -113,9 +114,11 @@ function colorScore(s){ return s >= 70 ? "#f87171" : s >= 45 ? "#fdba74" : "#647
 function pill(t){ return t==="CALIENTE" ? "p-red" : t==="TIBIO" ? "p-orange" : "p-gray"; }
 
 function render(){
-  const filtrados = datos.filter(d =>
-    (filtro==="TODOS" || d.tier===filtro) &&
-    d.nombre.toLowerCase().includes(busqueda));
+  const filtrados = (datos || []).filter(d =>
+    (filtro === "TODOS" || (d.tier || "") === filtro) &&
+    ((d.nombre || "").toLowerCase().includes(busqueda || "")));
+  const dbg = document.getElementById("debug");
+  if (dbg) dbg.textContent = "DEBUG → cargados: " + (datos ? datos.length : 0) + " | filtrados: " + filtrados.length + " | filtro: '" + filtro + "' | busqueda: '" + busqueda + "'";
   document.getElementById("filas").innerHTML = filtrados.map(d => `
     <tr>
       <td class="score" style="color:${colorScore(d.score)}">${d.score}</td>
@@ -197,7 +200,7 @@ document.getElementById("scanForm").onsubmit = async (e) => {
     const j = await r.json();
     if (!r.ok) { msg.style.color = "#f87171"; msg.textContent = "Error: " + (j.error || r.status); return; }
     msg.style.color = "#4ade80";
-    msg.textContent = "✅ Escaneados " + j.escaneados + " negocios (" + j.calientes + " calientes). Total en base: " + j.total_bd;
+    msg.textContent = "✅ Escaneados " + j.escaneados + " (" + j.calientes + " calientes, " + (j.saltados || 0) + " saltados" + (j.primerError ? " | ERROR: " + j.primerError : "") + "). Total en base: " + j.total_bd;
     await cargar();
   } catch (err) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + err.message; }
 };
