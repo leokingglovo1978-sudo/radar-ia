@@ -146,11 +146,20 @@ module.exports = async (req, res) => {
   }
   await Promise.all(Array.from({ length: 5 }, worker));
 
-  // 4) Guardar en Supabase
-  for (let i = 0; i < negocios.length; i += 50) {
-    await sbAdmin.from("businesses").upsert(negocios.slice(i, i + 50), { onConflict: "id" });
-  }
+  // 4) Guardar en Supabase, contando de verdad
   const hot = negocios.filter(n => n.tier === "CALIENTE").length;
-  return res.json({ ok: true, escaneados: negocios.length, saltados, primerError, calientes: hot,
-    total_bd: (await sbAdmin.from("businesses").select("id", { count: "exact", head: true })).count });
+  const idsNuevos = negocios.map(n => n.id);
+  const exist = await sbAdmin.from("businesses").select("id", { count: "exact", head: true }).in("id", idsNuevos);
+  const yaExistian = exist.count || 0;
+
+  let guardados = 0, upErrMsg = "";
+  for (let i = 0; i < negocios.length; i += 50) {
+    const { data: upData, error: upErr } = await sbAdmin.from("businesses")
+      .upsert(negocios.slice(i, i + 50), { onConflict: "id" }).select("id");
+    if (upErr) { upErrMsg = upErr.message + " (" + (upErr.code || "?") + ")"; break; }
+    guardados += (upData || []).length;
+  }
+  const total = (await sbAdmin.from("businesses").select("id", { count: "exact", head: true })).count;
+  return res.json({ ok: !upErrMsg, escaneados: negocios.length, saltados, primerError,
+    yaExistian, guardados, upErrMsg, calientes: hot, total_bd: total });
 };

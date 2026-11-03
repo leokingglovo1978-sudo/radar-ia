@@ -115,7 +115,7 @@ function pill(t){ return t==="CALIENTE" ? "p-red" : t==="TIBIO" ? "p-orange" : "
 
 function render(){
   const filtrados = (datos || []).filter(d =>
-    (filtro === "TODOS" || (d.tier || "") === filtro) &&
+    ((filtro || "TODOS") === "TODOS" || (d.tier || "") === filtro) &&
     ((d.nombre || "").toLowerCase().includes(busqueda || "")));
   const dbg = document.getElementById("debug");
   if (dbg) dbg.textContent = "DEBUG → cargados: " + (datos ? datos.length : 0) + " | filtrados: " + filtrados.length + " | filtro: '" + filtro + "' | busqueda: '" + busqueda + "'";
@@ -148,7 +148,7 @@ async function cargar(){
   render();
 }
 
-document.querySelectorAll(".filtro").forEach(b => b.onclick = () => {
+document.querySelectorAll("button.filtro[data-f]").forEach(b => b.onclick = () => {
   document.querySelectorAll(".filtro").forEach(x => x.classList.remove("activo"));
   b.classList.add("activo"); filtro = b.dataset.f; render();
 });
@@ -200,7 +200,7 @@ document.getElementById("scanForm").onsubmit = async (e) => {
     const j = await r.json();
     if (!r.ok) { msg.style.color = "#f87171"; msg.textContent = "Error: " + (j.error || r.status); return; }
     msg.style.color = "#4ade80";
-    msg.textContent = "✅ Escaneados " + j.escaneados + " (" + j.calientes + " calientes, " + (j.saltados || 0) + " saltados" + (j.primerError ? " | ERROR: " + j.primerError : "") + "). Total en base: " + j.total_bd;
+    msg.textContent = (j.ok ? "✅ " : "❌ ") + "Procesados " + j.escaneados + " | ya existian: " + (j.yaExistian ?? "?") + " | guardados: " + (j.guardados ?? "?") + (j.upErrMsg ? " | ERROR: " + j.upErrMsg : "") + " | Total en base: " + j.total_bd;
     await cargar();
   } catch (err) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + err.message; }
 };
