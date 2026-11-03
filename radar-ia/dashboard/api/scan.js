@@ -108,6 +108,8 @@ module.exports = async (req, res) => {
   const sbAdmin = createClient(SB_URL, SB_SERVICE);
   const negocios = [];
   let idx = 0;
+  let saltados = 0;
+  let primerError = "";
   async function worker() {
     while (idx < ids.length) {
       const id = ids[idx++];
@@ -135,7 +137,10 @@ module.exports = async (req, res) => {
         Object.assign(b, scoreBiz(b));
         Object.assign(b, estimate(b));
         negocios.push(b);
-      } catch (e) { /* negocio fallido: se omite */ }
+      } catch (e) {
+        saltados++;
+        if (!primerError) primerError = String(e.message || e).slice(0, 200);
+      }
     }
   }
   await Promise.all(Array.from({ length: 5 }, worker));
@@ -145,6 +150,6 @@ module.exports = async (req, res) => {
     await sbAdmin.from("businesses").upsert(negocios.slice(i, i + 50), { onConflict: "id" });
   }
   const hot = negocios.filter(n => n.tier === "CALIENTE").length;
-  return res.json({ ok: true, escaneados: negocios.length, calientes: hot,
+  return res.json({ ok: true, escaneados: negocios.length, saltados, primerError, calientes: hot,
     total_bd: (await sbAdmin.from("businesses").select("id", { count: "exact", head: true })).count });
 };
