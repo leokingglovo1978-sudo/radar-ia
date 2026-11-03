@@ -137,6 +137,8 @@ module.exports = async (req, res) => {
         b.vertical = verticalOf(b.nombre);
         Object.assign(b, scoreBiz(b));
         Object.assign(b, estimate(b));
+        b.categoria = b.vertical;   // la tabla tiene 'categoria', no 'vertical'
+        delete b.vertical;          // no enviar columnas inexistentes
         negocios.push(b);
       } catch (e) {
         saltados++;
