@@ -52,9 +52,10 @@ module.exports = async (req, res) => {
       const xml = await r.text();
       const items = parseFeed(xml);
       for (const it of items.slice(0, 20)) {
-        const id = Buffer.from(it.link).toString("base64").replace(/[/+=]/g, "").slice(0, 60);
+        const limpio = (s) => (s || "").replace(/<[^>]*>/g, "").trim();
+        const id = Buffer.from(it.link + "|" + it.fecha).toString("base64").replace(/[+/=]/g, "_");
         const { error } = await sbAdmin.from("intent_signals").upsert({
-          id, titulo: it.titulo.slice(0, 500), link: it.link, fuente: it.fuente,
+          id, titulo: limpio(it.titulo).slice(0, 500), link: it.link, fuente: it.fuente,
           keyword: f.keyword || "", fecha: it.fecha, resumen: "" }, { onConflict: "id" });
         if (!error) nuevas++;
       }
