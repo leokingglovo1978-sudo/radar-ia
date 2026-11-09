@@ -198,6 +198,7 @@ function pintarMapa(data){
   const conCoords = data.filter(d => d.lat && d.lng);
   if (!conCoords.length) return;
   document.getElementById("mapa").style.display = "block";
+  if (mapa) { mapa.remove(); }   // destruir el mapa anterior para poder recrearlo
   mapa = L.map("mapa");
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {attribution:"© OpenStreetMap", maxZoom:19}).addTo(mapa);
   const bounds = [];
