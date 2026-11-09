@@ -62,7 +62,10 @@ module.exports = async (req, res) => {
       const xml = await r.text();
       const items = parseFeed(xml);
       for (const it of items.slice(0, 20)) {
-        const limpio = (s) => (s || "").replace(/<[^>]*>/g, "").trim();
+        const limpio = (s) => (s || "")
+          .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+          .replace(/<[^>]*>/g, "")
+          .replace(/&amp;/g, "&").trim();
         const id = Buffer.from(it.link + "|" + it.fecha).toString("base64").replace(/[+/=]/g, "_");
         const { error } = await sbAdmin.from("intent_signals").upsert({
           id, titulo: limpio(it.titulo).slice(0, 500), link: it.link, fuente: it.fuente,
