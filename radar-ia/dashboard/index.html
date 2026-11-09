@@ -32,6 +32,18 @@
   .zonacol { color:#a5b4fc; font-size:12px; max-width:110px; }
   .euros { color:#4ade80; font-weight:800; font-size:14px; white-space:nowrap; }
   .propuesta { color:#e2e8f0; font-size:12px; max-width:150px; }
+  #radarOverlay { position: fixed; inset: 0; background: rgba(3,15,9,0.94); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+  .radar-circle { width: 240px; height: 240px; border-radius: 50%; border: 2px solid #1d5c3a; position: relative; overflow: hidden; background: #04140c; box-shadow: 0 0 60px rgba(57,255,136,0.18); }
+  .radar-ring { position: absolute; border-radius: 50%; border: 1px solid #164a2e; }
+  .radar-ring.r1 { inset: 20%; }
+  .radar-ring.r2 { inset: 40%; border-color: #1d5c3a; }
+  .radar-sweep { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, rgba(57,255,136,0.55), rgba(57,255,136,0.08) 70deg, transparent 90deg); animation: radarrot 2.2s linear infinite; }
+  @keyframes radarrot { to { transform: rotate(360deg); } }
+  .radar-blip { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 12px #ff4d4d; animation: blipfade 2.2s ease-out infinite; }
+  .radar-blip.b1 { top: 30%; left: 60%; animation-delay: 0.4s; }
+  .radar-blip.b2 { top: 62%; left: 35%; background: #ffa726; box-shadow: 0 0 12px #ffa726; animation-delay: 1.1s; }
+  .radar-blip.b3 { top: 48%; left: 72%; animation-delay: 1.7s; }
+  @keyframes blipfade { 0% { opacity: 0; transform: scale(0.4); } 15% { opacity: 1; transform: scale(1); } 80% { opacity: 0.9; } 100% { opacity: 0; } }
   #cargando { padding:60px; text-align:center; color:#64748b; }
   #mapa { height:420px; margin:0 24px 20px; border-radius:12px; border:1px solid #334155; display:none; z-index:1; }
   .leaflet-popup-content-wrapper { background:#1e293b; color:#e2e8f0; border-radius:10px; }
@@ -49,6 +61,15 @@
   <span class="pill p-orange">🟡 TIBIO</span>
   <span class="pill p-gray">⚪ BAJO</span>
 </header>
+
+<div id="radarOverlay">
+  <div class="radar-circle">
+    <div class="radar-ring r1"></div><div class="radar-ring r2"></div>
+    <div class="radar-sweep"></div>
+    <div class="radar-blip b1"></div><div class="radar-blip b2"></div><div class="radar-blip b3"></div>
+  </div>
+  <div id="radarStatus" style="color:#39ff88; margin-top:20px; font-family:monospace; font-size:15px; letter-spacing:1px;">BUSCANDO...</div>
+</div>
 
 <div id="auth" style="display:none; padding:16px 24px;">
   <div class="card" style="max-width:360px;">
@@ -211,6 +232,7 @@ document.getElementById("scanForm").onsubmit = async (e) => {
   const { data: { session } } = await sbAuth.auth.getSession();
   if (!session) { msg.textContent = "Sesión expirada, vuelve a entrar."; return; }
   msg.style.color = "#fbbf24"; msg.textContent = "⏳ Escaneando… (1-2 minutos, no cierres la página)";
+  radarOn("🛰️  ESCANEANDO " + document.getElementById("scanQuery").value.toUpperCase() + " ...");
   try {
     const r = await fetch("/api/scan", { method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
@@ -222,7 +244,7 @@ document.getElementById("scanForm").onsubmit = async (e) => {
     msg.style.color = "#4ade80";
     msg.textContent = (j.ok ? "✅ " : "❌ ") + "Procesados " + j.escaneados + " | ya existian: " + (j.yaExistian ?? "?") + " | guardados: " + (j.guardados ?? "?") + (j.upErrMsg ? " | ERROR: " + j.upErrMsg : "") + " | Total en base: " + j.total_bd;
     await cargar();
-  } catch (err) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + err.message; }
+  } catch (err) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + err.message; } finally { radarOff(); }
 };
 (async () => { const { data: { session } } = await sbAuth.auth.getSession(); authUI(session);
   sbAuth.auth.onAuthStateChange((_e, s) => authUI(s)); })();
@@ -250,6 +272,7 @@ document.getElementById("btnIntent").onclick = async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { msg.textContent = "Sesion expirada, vuelve a entrar."; return; }
   msg.style.color = "#fbbf24"; msg.textContent = "Consultando Google Alerts… (10-20 segundos)";
+  radarOn("📡  ACTUALIZANDO RADAR DE INTENCIÓN ...");
   try {
     const r = await fetch("/api/intent", { method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token } });
@@ -257,8 +280,10 @@ document.getElementById("btnIntent").onclick = async () => {
     msg.style.color = r.ok ? "#4ade80" : "#f87171";
     msg.textContent = r.ok ? ("OK - " + j.mensaje) : ("Error: " + (j.error || r.status));
     await cargarIntentos();
-  } catch (e) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + e.message; }
+  } catch (e) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + e.message; } finally { radarOff(); }
 };
+function radarOn(msg){ document.getElementById("radarStatus").textContent = msg || "BUSCANDO..."; document.getElementById("radarOverlay").style.display = "flex"; }
+function radarOff(){ document.getElementById("radarOverlay").style.display = "none"; }
 function recalcStats(){
   document.getElementById("sTotal").textContent = datos.length;
   document.getElementById("sHot").textContent = datos.filter(d=>d.tier==="CALIENTE").length;
