@@ -29,6 +29,7 @@
   a { color:#38bdf8; text-decoration:none; } a:hover { text-decoration:underline; }
   details summary { cursor:pointer; color:#64748b; font-size:11px; }
   .tel { color:#a5b4fc; font-weight:600; white-space:nowrap; }
+  .zonacol { color:#a5b4fc; font-size:12px; max-width:110px; }
   .euros { color:#4ade80; font-weight:800; font-size:14px; white-space:nowrap; }
   .propuesta { color:#e2e8f0; font-size:12px; max-width:150px; }
   #cargando { padding:60px; text-align:center; color:#64748b; }
@@ -81,7 +82,7 @@
     <input id="buscarIntent" placeholder="🔍 Filtrar señales (ej: Almería, n8n, empleo...)" style="margin-left:10px; width:280px;">
     <span id="intentMsg" style="font-size:12px; color:#94a3b8; margin-left:8px;">Trae las señales de tus Google Alerts (tarda unos segundos)</span>
     <table style="width:100%; margin:10px 0 0; font-size:12px;">
-      <thead><tr><th style="padding:6px 8px;">Fecha</th><th style="text-align:left;">Señal (click para verla)</th><th style="text-align:left;">Origen</th><th></th></tr></thead>
+      <thead><tr><th style="padding:6px 8px;">Fecha</th><th style="text-align:left;">Señal (click para verla)</th><th style="text-align:left;">Zona</th><th></th></tr></thead>
       <tbody id="filasIntento"><tr><td colspan="3" style="color:#475569; padding:8px;">Aún no hay señales. Configura tus Google Alerts (te expliqué cómo abajo) y pulsa Actualizar.</td></tr></tbody>
     </table>
   </div>
@@ -107,7 +108,7 @@
 <div id="debug" style="padding:4px 24px; font-size:11px; color:#475569;"></div>
 <table id="tabla" style="display:none">
   <thead><tr>
-    <th>Score</th><th>Negocio</th><th>Teléfono</th><th>Vertical</th><th>Señales detectadas</th><th>Frase para el pitch</th><th>€ perdidos/mes</th><th>Propuesta</th><th>Mapa</th>
+    <th>Score</th><th>Negocio</th><th>Teléfono</th><th>Vertical</th><th>Señales detectadas</th><th>Frase para el pitch</th><th>Zona</th><th>€ perdidos/mes</th><th>Propuesta</th><th>Mapa</th>
   </tr></thead>
   <tbody id="filas"></tbody>
 </table>
@@ -123,6 +124,11 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let datos = [], filtro = "TODOS", busqueda = "";
 
+function zonaLead(d){
+  if (d.ciudad) return d.ciudad;
+  const m = (d.direccion || "").match(/\b\d{5}\s+([A-Za-zÁÉÍÓÚÜÑáéíóúüñ ]{2,30})\b/);
+  return m ? m[1].trim() : "—";
+}
 function colorScore(s){ return s >= 70 ? "#f87171" : s >= 45 ? "#fdba74" : "#64748b"; }
 function pill(t){ return t==="CALIENTE" ? "p-red" : t==="TIBIO" ? "p-orange" : "p-gray"; }
 
@@ -142,6 +148,7 @@ function render(){
       <td class="quote">${d.quote ? "«" + d.quote + "»" : "—"}</td>
       <td class="euros">${d.perdida_mes ? "~" + d.perdida_mes + " €" : "—"}</td>
       <td class="propuesta">${d.propuesta || "—"}</td>
+      <td class="zonacol">${zonaLead(d)}</td>
       <td>${d.maps_url ? `<a href="${d.maps_url}" target="_blank">Google Maps ↗</a>` : "—"}<br><button onclick="descartar('lead','${d.id}')" title="Descartar lead" style="background:none;border:none;cursor:pointer;font-size:12px;">🗑️ descartar</button></td>
     </tr>`).join("");
 }
@@ -223,12 +230,12 @@ document.getElementById("scanForm").onsubmit = async (e) => {
 let senales = [], filtroIntent = "";
 function renderIntentos(){
   const tb = document.getElementById("filasIntento");
-  const filtradas = senales.filter(s => ((s.titulo||"") + " " + (s.keyword||"") + " " + (s.fuente||"")).toLowerCase().includes(filtroIntent));
+  const filtradas = senales.filter(s => ((s.titulo||"") + " " + (s.keyword||"") + " " + (s.fuente||"") + " " + (s.zona||"")).toLowerCase().includes(filtroIntent));
   if (!filtradas.length){ tb.innerHTML = "<tr><td colspan='4' style='color:#475569;padding:8px;'>" + (senales.length ? "Nada coincide con el filtro." : "Sin senyales todavia. Pulsa Actualizar.") + "</td></tr>"; return; }
   tb.innerHTML = filtradas.map(d => `<tr>
     <td style="white-space:nowrap; color:#94a3b8; padding:6px 8px;">${(d.fecha||"").slice(0,10)}</td>
     <td><a href="${d.link}" target="_blank" style="color:#fbbf24;">${d.titulo}</a><div style="color:#64748b; font-size:11px;">${d.keyword||""}</div></td>
-    <td style="color:#94a3b8;">${d.fuente||""}</td>
+    <td style="color:#a5b4fc;">${d.zona ? "📍 " + d.zona : (d.fuente || d.keyword || "")}</td>
     <td><button onclick="descartar('senal','${d.id}')" title="Descartar" style="background:none;border:none;cursor:pointer;">🗑️</button></td>
   </tr>`).join("");
 }

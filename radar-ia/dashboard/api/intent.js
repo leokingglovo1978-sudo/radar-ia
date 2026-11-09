@@ -5,6 +5,16 @@ const SB_URL = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
 const SB_SERVICE = process.env.SUPABASE_SERVICE_KEY;
 
+const CIUDADES = ["almeria","roquetas de mar","el ejido","motril","granada","malaga","marbella","murcia","cartagena","lorca","jaen","cadiz","cordoba","sevilla","huelva","algeciras","jerez","madrid","barcelona","valencia","alicante","elche","torrevieja","orihuela","benidorm","gandia","castellon","tarragona","girona","lleida","palma","sabadell","terrassa","badalona","hospitalet","bilbao","vitoria","san sebastian","santander","oviedo","gijon","coruna","vigo","ourense","zamora","leon","palencia","burgos","soria","segovia","avila","salamanca","zamora","zaragoza","teruel","logrono","pamplona","badajoz","caceres","toledo","ciudad real","cuenca","guadalajara","albacete","valladolid","merida","melilla","ceuta","fuenlabrada","getafe","leganes","mostoles","alcorcon","parla","alcobendas","pozuelo","rivas","coslada","alcala","dos hermanas","almerimar","vera","nijar","tabernas","berja","adra"];
+const normTxt = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function zonaDe(titulo) {
+  const t = normTxt(titulo);
+  for (const ciudad of CIUDADES) {
+    if (new RegExp("\\b" + ciudad.replace(/ /g, "\\s+") + "\\b").test(t)) return ciudad;
+  }
+  return "";
+}
+
 function parseFeed(xml) {
   // Soporta Atom (Google Alerts) y RSS 2.0
   const items = [];
@@ -56,7 +66,7 @@ module.exports = async (req, res) => {
         const id = Buffer.from(it.link + "|" + it.fecha).toString("base64").replace(/[+/=]/g, "_");
         const { error } = await sbAdmin.from("intent_signals").upsert({
           id, titulo: limpio(it.titulo).slice(0, 500), link: it.link, fuente: it.fuente,
-          keyword: f.keyword || "", fecha: it.fecha, resumen: "" }, { onConflict: "id" });
+          keyword: f.keyword || "", fecha: it.fecha, resumen: "", zona: zonaDe(it.titulo) }, { onConflict: "id" });
         if (!error) nuevas++;
       }
     } catch (e) { errores++; }
