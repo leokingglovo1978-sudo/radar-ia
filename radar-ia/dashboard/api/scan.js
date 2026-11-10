@@ -139,6 +139,19 @@ module.exports = async (req, res) => {
         Object.assign(b, estimate(b));
         b.categoria = b.vertical;   // la tabla tiene 'categoria', no 'vertical'
         delete b.vertical;          // no enviar columnas inexistentes
+        let email = "";
+        if (b.web) {
+          try {
+            const wr = await fetch(b.web, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" }, signal: AbortSignal.timeout(5000) });
+            const mails = (await wr.text()).match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g) || [];
+            const limpios = mails.map(m => m.toLowerCase())
+              .filter(m => !/\.(png|jpg|jpeg|gif|webp|svg|css|js)$/i.test(m))
+              .filter(m => !/(sentry|wixpress|godaddy|schema|example|@2x|doubleclick|googleapis|fontawesome|bootstrap|jquery|cloudflare|gstatic|w3\.org)/i.test(m))
+              .filter(m => m.length < 60);
+            if (limpios.length) email = limpios[0];
+          } catch (e) { /* web inaccesible */ }
+        }
+        b.email = email;
         negocios.push(b);
       } catch (e) {
         saltados++;

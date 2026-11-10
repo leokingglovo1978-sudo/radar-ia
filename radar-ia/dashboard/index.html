@@ -121,6 +121,8 @@
   <button class="filtro" data-f="CALIENTE">🔥 Calientes</button>
   <button class="filtro" data-f="TIBIO">🟡 Tibios</button>
   <button class="filtro" data-f="BAJO">⚪ Bajos</button>
+  <button class="filtro" id="btnEmails" style="border-color:#334155;">📧 Buscar emails</button>
+  <span id="emailMsg" style="font-size:12px;color:#94a3b8;align-self:center;"></span>
   <input id="buscar" placeholder="🔍 Buscar por nombre...">
 </div>
 
@@ -129,7 +131,7 @@
 <div id="debug" style="padding:4px 24px; font-size:11px; color:#475569;"></div>
 <table id="tabla" style="display:none">
   <thead><tr>
-    <th>Score</th><th>Negocio</th><th>Teléfono</th><th>Vertical</th><th>Señales detectadas</th><th>Frase para el pitch</th><th>Zona</th><th>€ perdidos/mes</th><th>Propuesta</th><th>Mapa</th>
+    <th>Score</th><th>Negocio</th><th>Teléfono</th><th>Email</th><th>Vertical</th><th>Señales detectadas</th><th>Frase para el pitch</th><th>Zona</th><th>€ perdidos/mes</th><th>Propuesta</th><th>Mapa</th>
   </tr></thead>
   <tbody id="filas"></tbody>
 </table>
@@ -164,6 +166,7 @@ function render(){
       <td class="score" style="color:${colorScore(d.score)}">${d.score}</td>
       <td><b>${d.nombre}</b><br><span class="pill ${pill(d.tier)}">${d.tier}</span></td>
       <td class="tel">${d.telefono || "—"}</td>
+      <td style="font-size:12px;">${d.email ? `<a href="mailto:${d.email}">${d.email}</a>` : '<span style="color:#475569">—</span>'}</td>
       <td>${d.categoria || "—"}</td>
       <td class="motivos">${d.motivos || ""}</td>
       <td class="quote">${d.quote ? "«" + d.quote + "»" : "—"}</td>
@@ -302,6 +305,27 @@ window.descartar = async (tipo, id) => {
     if (tipo === "lead") { datos = datos.filter(d => d.id !== id); render(); recalcStats(); }
     else { senales = senales.filter(s => s.id !== id); renderIntentos(); }
   } else { const j = await r.json().catch(()=>({})); alert("Error: " + (j.error || r.status)); }
+};
+document.getElementById("btnEmails").onclick = async () => {
+  const msg = document.getElementById("emailMsg");
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { msg.textContent = "Sesion expirada"; return; }
+  msg.style.color = "#fbbf24"; msg.textContent = "Buscando emails en las webs (25 en cada tanda)…";
+  radarOn("📧  BUSCANDO EMAILS EN LAS WEBS ...");
+  let total = 0, ultimo = 25;
+  while (ultimo === 25) {
+    try {
+      const r = await fetch("/api/enriquecer", { method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token } });
+      const j = await r.json();
+      if (!r.ok) { msg.style.color = "#f87171"; msg.textContent = "Error: " + (j.error || r.status); break; }
+      total += j.encontrados || 0; ultimo = j.procesados || 0;
+      msg.textContent = "Emails encontrados hasta ahora: " + total + " …";
+      if (ultimo < 25) { msg.style.color = "#4ade80"; msg.textContent = "✅ Listo: " + total + " emails nuevos. Queda ninguno pendiente."; break; }
+    } catch (e) { msg.style.color = "#f87171"; msg.textContent = "Error de red"; break; }
+  }
+  radarOff();
+  await cargar();
 };
 cargar();
 cargarIntentos();
