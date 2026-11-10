@@ -166,7 +166,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ==== CONFIGURA AQUÍ (la clave anon es pública y segura: solo lectura) ====
-const SUPABASE_URL = https://"yjiifqgpkoiixclzdofz.supabase.co";
+const SUPABASE_URL = "https://yjiifqgpkoiixclzdofz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqaWlmcWdwa29paXhjbHpkb2Z6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MjkwNTAsImV4cCI6MjEwOTEwNTA1MH0.Rz_P8vGIWSLBLPf4ntrpA691a9QJsaMtUnfSV1lOGzk";
 // =======================================================================
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -195,9 +195,9 @@ function render(){
       <td>${d.categoria || "—"}</td>
       <td class="motivos">${d.motivos || ""}</td>
       <td class="quote">${d.quote ? "«" + d.quote + "»" : "—"}</td>
+      <td class="zonacol">${zonaLead(d)}</td>
       <td class="euros">${d.perdida_mes ? "~" + d.perdida_mes + " €" : "—"}</td>
       <td class="propuesta">${d.propuesta || "—"}</td>
-      <td class="zonacol">${zonaLead(d)}</td>
       <td>${d.maps_url ? `<a href="${d.maps_url}" target="_blank">Google Maps ↗</a>` : "—"}<br><button onclick="abrirPitch('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#38bdf8;">💬 pitch</button>
         <button onclick="descartar('lead','${d.id}')" title="Descartar lead" style="background:none;border:none;cursor:pointer;font-size:12px;">🗑️ descartar</button></td>
     </tr>`).join("");
