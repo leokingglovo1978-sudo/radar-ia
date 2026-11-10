@@ -166,8 +166,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ==== CONFIGURA AQUÍ (la clave anon es pública y segura: solo lectura) ====
-const SUPABASE_URL = "PEGA_AQUI_TU_SUPABASE_URL";
-const SUPABASE_ANON_KEY = "PEGA_AQUI_TU_ANON_KEY";
+const SUPABASE_URL = https://yjiifqgpkoiixclzdofz.supabase.co"";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqaWlmcWdwa29paXhjbHpkb2Z6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MjkwNTAsImV4cCI6MjEwOTEwNTA1MH0.Rz_P8vGIWSLBLPf4ntrpA691a9QJsaMtUnfSV1lOGzk";
 // =======================================================================
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let datos = [], filtro = "TODOS", busqueda = "";
@@ -378,38 +378,18 @@ function pitchTexto(d, tab){
   const serv = servicioDe(d);
   const precio = d.propuesta || "150 EUR de puesta en marcha + 49 EUR/mes";
   if (tab === "llamada")
-    return "Hola, ¿esta la dueña o el encargado? Soy " + miNombre() + ", de Almeria.
-
-" +
-      "Te llamo porque estuve analizando reseñas de " + vert + " de la zona y en la de ustedes " + dolor + ".
-
-" +
-      "Eso suele significar unos " + eur + " que se escapan sin que ustedes lo sepan. Lo resuelvo con " + serv + " por " + precio + ".
-
-" +
+    return "Hola, ¿esta la dueña o el encargado? Soy " + miNombre() + ", de Almeria.\n\n" +
+      "Te llamo porque estuve analizando reseñas de " + vert + " de la zona y en la de ustedes " + dolor + ".\n\n" +
+      "Eso suele significar unos " + eur + " que se escapan sin que ustedes lo sepan. Lo resuelvo con " + serv + " por " + precio + ".\n\n" +
       "¿Te cuento como funciona en 2 minutos? Solo una pregunta: ¿quien contesta el WhatsApp los fines de semana?";
   if (tab === "whatsapp")
-    return "Hola, soy " + miNombre() + ". Analice reseñas de " + vert + " de la ciudad y en la de ustedes " + dolor + ".
-
-" +
-      "Son clientes que se van a la competencia sin avisar: unos " + eur + " perdidos. Lo resuelvo con " + serv + " por " + precio + ".
-
-" +
+    return "Hola, soy " + miNombre() + ". Analice reseñas de " + vert + " de la ciudad y en la de ustedes " + dolor + ".\n\n" +
+      "Son clientes que se van a la competencia sin avisar: unos " + eur + " perdidos. Lo resuelvo con " + serv + " por " + precio + ".\n\n" +
       "¿Te mando un video de 1 minuto que lo explica todo?";
-  return "Asunto: Una reseña de su negocio en Google
-
-Hola,
-
-" +
-    "Soy " + miNombre() + ", desarrollador de Almeria. Estaba analizando reseñas de " + vert + " de la ciudad y en la de ustedes " + dolor + ".
-
-" +
-    "Eso suele significar unos " + eur + " que se escapan cada mes sin que ustedes lo sepan. Lo resuelvo con " + serv + " — explicado en 2 minutos aqui: [LINK A TU WEB]
-
-" +
-    "¿Te lo resumo mejor por WhatsApp?
-
-" + miNombre() + " · " + miTlf() + " · Almeria";
+  return "Asunto: Una reseña de su negocio en Google\n\nHola,\n\n" +
+    "Soy " + miNombre() + ", desarrollador de Almeria. Estaba analizando reseñas de " + vert + " de la ciudad y en la de ustedes " + dolor + ".\n\n" +
+    "Eso suele significar unos " + eur + " que se escapan cada mes sin que ustedes lo sepan. Lo resuelvo con " + serv + " — explicado en 2 minutos aqui: [LINK A TU WEB]\n\n" +
+    "¿Te lo resumo mejor por WhatsApp?\n\n" + miNombre() + " · " + miTlf() + " · Almeria";
 }
 function pintarPitch(){
   if (!pitchLead) return;
