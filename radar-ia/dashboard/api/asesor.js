@@ -16,6 +16,7 @@ const SYSTEM_CHAT = SYSTEM_BASE + " " + [
   "Si pregunta por 'leads viejos', 'pendientes', 'a quien contacto': presenta los de la lista precalculada (los 5-6 primeros con telefono), cada uno con su argumento, y menciona el total pendiente.",
   "Si pide leads 'con WhatsApp': explica en UNA linea que no podemos verificar WhatsApp, pero los moviles (6xx/7xx) casi siempre lo tienen y los fijos (950...) no reciben WhatsApp. Usa la lista de moviles; si no hay moviles entre los pendientes, dilo y ofrece los mejores con fijo recomendando LLAMADA o visita (que tambien funciona).",
   "Si pide redactar un mensaje, entregalo listo para copiar.",
+  "Tienes HISTORIAL de la conversacion: si Leonard dice 'el numero 2', 'el segundo', 'ese', 'el de antes' o similar, se refiere a un elemento de TU respuesta anterior (la lista que acabas de darle). Usa el historial para saber cual.",
   "Cierra siempre con UNA siguiente accion concreta."
 ].join(" ");
 
@@ -63,6 +64,12 @@ module.exports = async (req, res) => {
   try { body = req.body || {}; } catch (e) { body = {}; }
   const modo = body.modo || (body.pregunta ? "chat" : "briefing");
   const pregunta = (body.pregunta || "").toString().slice(0, 500);
+  const historial = Array.isArray(body.historial) ? body.historial.slice(-6) : [];
+  const mensajesPrevios = [];
+  for (const item of historial) {
+    if (item && item.pregunta) mensajesPrevios.push({ role: "user", content: String(item.pregunta).slice(0, 800) });
+    if (item && item.respuesta) mensajesPrevios.push({ role: "assistant", content: String(item.respuesta).slice(0, 1500) });
+  }
 
   const sb = createClient(SB_URL, SB_SERVICE);
 
@@ -123,7 +130,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           model: process.env.MOONSHOT_MODEL || "kimi-k2-0905-preview",
           temperature: 0.5,
-          messages: [{ role: "system", content: system }, { role: "user", content: mensajeUsuario }] }) });
+          messages: [{ role: "system", content: system }].concat(mensajesPrevios).concat([{ role: "user", content: mensajeUsuario }]) }) });
       const j = await r.json();
       if (j.choices && j.choices[0] && j.choices[0].message) { respuesta = j.choices[0].message.content; motor = "kimi"; }
     } catch (e) { /* respaldo */ }
@@ -134,7 +141,7 @@ module.exports = async (req, res) => {
         method: "POST",
         headers: { Authorization: "Bearer " + process.env.OPENAI_API_KEY, "Content-Type": "application/json" },
         body: JSON.stringify({ model: "gpt-4o-mini", temperature: 0.5,
-          messages: [{ role: "system", content: system }, { role: "user", content: mensajeUsuario }] }) });
+          messages: [{ role: "system", content: system }].concat(mensajesPrevios).concat([{ role: "user", content: mensajeUsuario }]) }) });
       const j = await r.json();
       if (j.choices && j.choices[0] && j.choices[0].message) { respuesta = j.choices[0].message.content; motor = "openai (respaldo)"; }
     } catch (e) { /* nada */ }

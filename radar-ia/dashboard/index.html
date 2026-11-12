@@ -195,7 +195,7 @@
 <script>
 // ==== CONFIGURA AQUÍ (la clave anon es pública y segura: solo lectura) ====
 const SUPABASE_URL = "https://yjiifqgpkoiixclzdofz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqaWlmcWdwa29paXhjbHpkb2Z6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MjkwNTAsImV4cCI6MjEwOTEwNTA1MH0.Rz_P8vGIWSLBLPf4ntrpA691a9QJsaMtUnfSV1lOGzk";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqaWlmZ3Fwa29paXhjbHpkb2Z6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MjkwNTAsImV4cCI6MjEwOTEwNTA1MH0.Rz_P8vGIWSLBLPf4ntrpA691a9QJsaMtUnfSV1lOGzk";
 // =======================================================================
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let datos = [], filtro = "TODOS", busqueda = "";
@@ -233,12 +233,18 @@ function render(){
 }
 
 let mapa;
+function coordsValidas(d){
+  // solo coordenadas plausibles de Espana peninsular: evita pins en EE.UU. o (0,0) que rompen el zoom
+  return d.lat && d.lng && d.lat > 34 && d.lat < 45 && d.lng > -11 && d.lng < 5;
+}
 function pintarMapa(data){
-  const conCoords = data.filter(d => d.lat && d.lng);
-  if (!conCoords.length) return;
-  document.getElementById("mapa").style.display = "block";
-  if (mapa) { mapa.remove(); }
-  mapa = L.map("mapa");
+  const conCoords = data.filter(coordsValidas);
+  const el = document.getElementById("mapa");
+  if (!conCoords.length) { el.style.display = "none"; return; }
+  el.style.display = "block";
+  el.style.height = "420px";
+  if (mapa) { mapa.remove(); mapa = null; }
+  mapa = L.map("mapa", { minZoom: 9 });
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {attribution:"© OpenStreetMap", maxZoom:19}).addTo(mapa);
   const bounds = [];
   conCoords.forEach(d => {
@@ -248,7 +254,8 @@ function pintarMapa(data){
     m.bindPopup(`<b>${d.nombre}</b><br><span class="popup-score" style="color:${color}">${d.score} pts — ${d.tier}</span><div class="popup-mot">${d.motivos||""}</div><div class="popup-mot" style="color:#4ade80">Pierde ~${d.perdida_mes||"?"} EUR/mes | Propuesta: ${d.propuesta||""}</div>${d.telefono?`<br>📞 ${d.telefono}`:""}${d.maps_url?`<br><a href="${d.maps_url}" target="_blank">Google Maps ↗</a>`:""}`);
     bounds.push([d.lat, d.lng]);
   });
-  mapa.fitBounds(bounds, {padding:[30,30]});
+  mapa.fitBounds(bounds, {padding:[30,30], maxZoom: 15});
+  setTimeout(() => { if (mapa) mapa.invalidateSize(); }, 150);
 }
 
 async function cargar(){
@@ -350,6 +357,7 @@ document.getElementById("scanForm").onsubmit = async (e) => {
 };
 
 // ===== ASESOR IA (Kimi) =====
+let historialChat = [];   // memoria de la conversacion (ultimos 6 intercambios)
 async function llamarAsesor(modo, pregunta){
   const out = document.getElementById("asesorOut");
   const { data: { session } } = await sb.auth.getSession();
@@ -360,11 +368,15 @@ async function llamarAsesor(modo, pregunta){
   try {
     const r = await fetch("/api/asesor", { method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
-      body: JSON.stringify({ modo, pregunta: pregunta || "" }) });
+      body: JSON.stringify({ modo, pregunta: pregunta || "", historial: historialChat }) });
     const j = await r.json();
     if (!r.ok) { out.style.color = "#f87171"; out.textContent = "Error: " + (j.error || r.status); return; }
     out.style.color = "#e2e8f0";
     out.textContent = j.respuesta;
+    if (modo === "chat" && pregunta) {
+      historialChat.push({ pregunta, respuesta: j.respuesta });
+      if (historialChat.length > 6) historialChat.shift();
+    }
   } catch (e) { out.style.color = "#f87171"; out.textContent = "Error de red: " + e.message; }
   finally { radarOff(); }
 }
