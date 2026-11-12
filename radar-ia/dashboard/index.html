@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<base target="_blank">
 <title>Radar IA — Leads Almería</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -29,9 +30,17 @@
   a { color:#38bdf8; text-decoration:none; } a:hover { text-decoration:underline; }
   details summary { cursor:pointer; color:#64748b; font-size:11px; }
   .tel { color:#a5b4fc; font-weight:600; white-space:nowrap; }
-  .zonacol { color:#a5b4fc; font-size:12px; max-width:110px; }
   .euros { color:#4ade80; font-weight:800; font-size:14px; white-space:nowrap; }
   .propuesta { color:#e2e8f0; font-size:12px; max-width:150px; }
+  .zonacol { color:#a5b4fc; font-size:12px; max-width:110px; }
+  #cargando { padding:60px; text-align:center; color:#64748b; }
+  #mapa { height:420px; margin:0 24px 20px; border-radius:12px; border:1px solid #334155; display:none; z-index:1; }
+  .leaflet-popup-content-wrapper { background:#1e293b; color:#e2e8f0; border-radius:10px; }
+  .leaflet-popup-tip { background:#1e293b; }
+  .leaflet-popup-content b { color:#38bdf8; }
+  .popup-score { font-weight:800; font-size:16px; }
+  .popup-mot { color:#94a3b8; font-size:12px; margin-top:4px; }
+  #debug { padding:4px 24px; font-size:11px; color:#475569; }
   #briefingModal { position: fixed; inset: 0; background: rgba(2,6,16,0.9); z-index: 10000; display: none; align-items: center; justify-content: center; }
   .briefing-card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; width: min(680px, 94vw); max-height: 88vh; overflow: auto; padding: 22px 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
   #briefingTexto { white-space: pre-wrap; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 16px 18px; font-size: 13.5px; line-height: 1.7; color: #d7e3f4; min-height: 200px; }
@@ -51,13 +60,6 @@
   .radar-blip.b2 { top: 62%; left: 35%; background: #ffa726; box-shadow: 0 0 12px #ffa726; animation-delay: 1.1s; }
   .radar-blip.b3 { top: 48%; left: 72%; animation-delay: 1.7s; }
   @keyframes blipfade { 0% { opacity: 0; transform: scale(0.4); } 15% { opacity: 1; transform: scale(1); } 80% { opacity: 0.9; } 100% { opacity: 0; } }
-  #cargando { padding:60px; text-align:center; color:#64748b; }
-  #mapa { height:420px; margin:0 24px 20px; border-radius:12px; border:1px solid #334155; display:none; z-index:1; }
-  .leaflet-popup-content-wrapper { background:#1e293b; color:#e2e8f0; border-radius:10px; }
-  .leaflet-popup-tip { background:#1e293b; }
-  .leaflet-popup-content b { color:#38bdf8; }
-  .popup-score { font-weight:800; font-size:16px; }
-  .popup-mot { color:#94a3b8; font-size:12px; margin-top:4px; }
 </style>
 <base target="_blank">
 </head>
@@ -68,20 +70,6 @@
   <span class="pill p-orange">🟡 TIBIO</span>
   <span class="pill p-gray">⚪ BAJO</span>
 </header>
-
-<div id="briefingModal">
-  <div class="briefing-card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <b style="font-size:16px;">🤖 Briefing del dia</b>
-      <button onclick="document.getElementById('briefingModal').style.display='none'" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">✕</button>
-    </div>
-    <div id="briefingTexto"></div>
-    <div style="display:flex; gap:10px; margin-top:12px; align-items:center;">
-      <button class="filtro activo" id="btnCopiarBriefing">📋 Copiar briefing</button>
-      <span id="briefingMotor" style="font-size:11px; color:#64748b;"></span>
-    </div>
-  </div>
-</div>
 
 <div id="pitchModal">
   <div class="pitch-card">
@@ -113,6 +101,32 @@
   <div id="radarStatus" style="color:#39ff88; margin-top:20px; font-family:monospace; font-size:15px; letter-spacing:1px;">BUSCANDO...</div>
 </div>
 
+<div id="briefingModal">
+  <div class="briefing-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <b style="font-size:16px;">🤖 Briefing del dia</b>
+      <button onclick="document.getElementById('briefingModal').style.display='none'" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div id="briefingTexto"></div>
+    <div style="display:flex; gap:10px; margin-top:12px; align-items:center;">
+      <button class="filtro activo" id="btnCopiarBriefing">📋 Copiar briefing</button>
+      <span id="briefingMotor" style="font-size:11px; color:#64748b;"></span>
+    </div>
+  </div>
+</div>
+
+<div style="padding:16px 24px;">
+  <div class="card" style="max-width:960px;">
+    <b>🤖 Asesor IA</b> <span style="color:#64748b; font-size:12px;">tu briefing diario y consultas sobre tus leads — cerebro: Kimi</span>
+    <button id="btnBriefing" class="filtro activo" style="margin-left:10px;">☀️ Briefing de hoy</button>
+    <div id="asesorOut" style="margin-top:12px; font-size:13px; color:#cbd5e1; white-space:pre-wrap; background:#0f172a; border:1px solid #334155; border-radius:10px; padding:14px 16px; min-height:70px;"></div>
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <input id="asesorInput" placeholder="Pregunta sobre tus leads (ej: ¿a quién llamo hoy? ¿qué señales hay?)" style="flex:1;">
+      <button id="btnAsesor" class="filtro activo">Preguntar</button>
+    </div>
+  </div>
+</div>
+
 <div id="auth" style="display:none; padding:16px 24px;">
   <div class="card" style="max-width:360px;">
     <b>🔒 Acceso de administrador</b>
@@ -142,24 +156,12 @@
   <div class="card" style="max-width:960px;">
     <b>🔥🔥 Radar de intención</b> <span style="color:#64748b; font-size:12px;">negocios buscando activamente IA: ofertas de empleo, licitaciones, preguntas públicas</span>
     <button id="btnIntent" class="filtro activo" style="margin-left:10px;">Actualizar</button>
-    <input id="buscarIntent" placeholder="🔍 Filtrar señales (ej: Almería, n8n, empleo...)" style="margin-left:10px; width:280px;">
+    <input id="buscarIntent" placeholder="🔍 Filtrar señales (ej: Almería, n8n, empleo..." style="margin-left:10px; width:280px;">
     <span id="intentMsg" style="font-size:12px; color:#94a3b8; margin-left:8px;">Trae las señales de tus Google Alerts (tarda unos segundos)</span>
     <table style="width:100%; margin:10px 0 0; font-size:12px;">
       <thead><tr><th style="padding:6px 8px;">Fecha</th><th style="text-align:left;">Señal (click para verla)</th><th style="text-align:left;">Zona</th><th></th></tr></thead>
-      <tbody id="filasIntento"><tr><td colspan="3" style="color:#475569; padding:8px;">Aún no hay señales. Configura tus Google Alerts (te expliqué cómo abajo) y pulsa Actualizar.</td></tr></tbody>
+      <tbody id="filasIntento"><tr><td colspan="4" style="color:#475569; padding:8px;">Aún no hay señales. Configura tus Google Alerts y pulsa Actualizar.</td></tr></tbody>
     </table>
-  </div>
-</div>
-
-<div style="padding:16px 24px;">
-  <div class="card" style="max-width:960px;">
-    <b>🤖 Asesor IA</b> <span style="color:#64748b; font-size:12px;">tu briefing diario y consultas sobre tus leads — cerebro: Kimi</span>
-    <button id="btnBriefing" class="filtro activo" style="margin-left:10px;">☀️ Briefing de hoy</button>
-    <div id="asesorSalida" style="display:none; margin-top:12px; font-size:13.5px; line-height:1.65; white-space:pre-wrap; color:#e2e8f0; background:#0f172a; border:1px solid #334155; border-radius:10px; padding:16px 18px; min-height:70px;"></div>
-    <div style="display:flex; gap:8px; margin-top:12px;">
-      <input id="asesorInput" placeholder="Pregunta sobre tus leads (ej: ¿a quién llamo hoy? ¿qué señales hay?)" style="flex:1;">
-      <button id="btnAsesor" class="filtro activo">Preguntar</button>
-    </div>
   </div>
 </div>
 
@@ -176,28 +178,24 @@
   <button class="filtro" data-f="TIBIO">🟡 Tibios</button>
   <button class="filtro" data-f="BAJO">⚪ Bajos</button>
   <button class="filtro" id="btnEmails" style="border-color:#334155;">📧 Buscar emails</button>
-  <button class="filtro" id="btnBriefing" style="border-color:#334155;">🤖 Briefing de hoy</button>
-  <span id="emailMsg" style="font-size:12px;color:#94a3b8;align-self:center;"></span>
   <input id="buscar" placeholder="🔍 Buscar por nombre...">
 </div>
-
-<div id="mapa"></div>
+<div id="debug"></div>
 <div id="cargando">Cargando leads desde Supabase…</div>
-<div id="debug" style="padding:4px 24px; font-size:11px; color:#475569;"></div>
 <table id="tabla" style="display:none">
   <thead><tr>
     <th>Score</th><th>Negocio</th><th>Teléfono</th><th>Email</th><th>Vertical</th><th>Señales detectadas</th><th>Frase para el pitch</th><th>Zona</th><th>€ perdidos/mes</th><th>Propuesta</th><th>Mapa</th>
   </tr></thead>
   <tbody id="filas"></tbody>
 </table>
+<div id="mapa"></div>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ==== CONFIGURA AQUÍ (la clave anon es pública y segura: solo lectura) ====
 const SUPABASE_URL = "https://yjiifqgpkoiixclzdofz.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqaWlmcWdwa29paXhjbHpkb2Z6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1MjkwNTAsImV4cCI6MjEwOTEwNTA1MH0.Rz_P8vGIWSLBLPf4ntrpA691a9QJsaMtUnfSV1lOGzk";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjM1MTY2N2MwLWE3ZjEtNDE0Mi05YzJkLWJlZWU0M2M1OWJkMSJ9.eyJpc3MiOiJodHRwczovL3N1cGFiYXNlLmNvbSIsInJlZiI6InlqaWlmZ3Fwa29paXhjbHpkb2Z6IiwiYXVkIjoicmVzdGZ1bCIsInN1YiI6ImY3MmRhMDFmLTBiNmQtNDcwNC05ODY3LTdmMmRiZDkxMTI2YiIsImVtYWlsIjoibGVva2luZy5nbHZvMTk3OEBnbWFpbC5jb20iLCJwaG9uZSI6IiIsImF1dGhfdGltZSI6MTc2MTcyNDEyNiwicmlnaHRzIjpbImNvbmZpcm1fZW1haWwiXSwiZXhwIjoxOTc3MzAwMTI2fQ.5S2uGb9pjDvStNTdbqbUg4t0vSx2M-FzXn8MI3B5PL0ZmrDq99UykE9yJbAxbPBtZ5FFHOr3rOxWVXIa4_Eifg";
 // =======================================================================
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let datos = [], filtro = "TODOS", busqueda = "";
@@ -225,12 +223,32 @@ function render(){
       <td>${d.categoria || "—"}</td>
       <td class="motivos">${d.motivos || ""}</td>
       <td class="quote">${d.quote ? "«" + d.quote + "»" : "—"}</td>
-      <td class="zonacol">${zonaLead(d)}</td>
       <td class="euros">${d.perdida_mes ? "~" + d.perdida_mes + " €" : "—"}</td>
       <td class="propuesta">${d.propuesta || "—"}</td>
+      <td class="zonacol">${zonaLead(d)}</td>
       <td>${d.maps_url ? `<a href="${d.maps_url}" target="_blank">Google Maps ↗</a>` : "—"}<br><button onclick="abrirPitch('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:#38bdf8;">💬 pitch</button>
-        <button onclick="descartar('lead','${d.id}')" title="Descartar lead" style="background:none;border:none;cursor:pointer;font-size:12px;">🗑️ descartar</button></td>
+        <button onclick="descartar('lead','${d.id}')" title="Descartar lead" style="background:none;border:none;cursor:pointer;font-size:12px;">🗑️ descartar</button>
+        <button onclick="marcarContactado('${d.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:${d.contactado_en ? '#4ade80' : '#64748b'};" title="${d.contactado_en ? 'Contactado el ' + (d.contactado_en || '').slice(0, 10) + ' (click para quitar)' : 'Marcar como contactado'}">${d.contactado_en ? '✅ visto' : '✅ marcar'}</button></td>
     </tr>`).join("");
+}
+
+let mapa;
+function pintarMapa(data){
+  const conCoords = data.filter(d => d.lat && d.lng);
+  if (!conCoords.length) return;
+  document.getElementById("mapa").style.display = "block";
+  if (mapa) { mapa.remove(); }
+  mapa = L.map("mapa");
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {attribution:"© OpenStreetMap", maxZoom:19}).addTo(mapa);
+  const bounds = [];
+  conCoords.forEach(d => {
+    const color = d.score >= 70 ? "#ef4444" : d.score >= 45 ? "#f59e0b" : "#64748b";
+    const r = d.score >= 70 ? 11 : d.score >= 45 ? 8 : 6;
+    const m = L.circleMarker([d.lat, d.lng], {radius:r, fillColor:color, color:"#0f172a", weight:2, opacity:1, fillOpacity:0.85}).addTo(mapa);
+    m.bindPopup(`<b>${d.nombre}</b><br><span class="popup-score" style="color:${color}">${d.score} pts — ${d.tier}</span><div class="popup-mot">${d.motivos||""}</div><div class="popup-mot" style="color:#4ade80">Pierde ~${d.perdida_mes||"?"} EUR/mes | Propuesta: ${d.propuesta||""}</div>${d.telefono?`<br>📞 ${d.telefono}`:""}${d.maps_url?`<br><a href="${d.maps_url}" target="_blank">Google Maps ↗</a>`:""}`);
+    bounds.push([d.lat, d.lng]);
+  });
+  mapa.fitBounds(bounds, {padding:[30,30]});
 }
 
 async function cargar(){
@@ -248,66 +266,6 @@ async function cargar(){
   render();
 }
 
-document.querySelectorAll("button.filtro[data-f]").forEach(b => b.onclick = () => {
-  document.querySelectorAll(".filtro").forEach(x => x.classList.remove("activo"));
-  b.classList.add("activo"); filtro = b.dataset.f; render();
-});
-let mapa;
-function pintarMapa(data){
-  const conCoords = data.filter(d => d.lat && d.lng);
-  if (!conCoords.length) return;
-  document.getElementById("mapa").style.display = "block";
-  if (mapa) { mapa.remove(); }   // destruir el mapa anterior para poder recrearlo
-  mapa = L.map("mapa");
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {attribution:"© OpenStreetMap", maxZoom:19}).addTo(mapa);
-  const bounds = [];
-  conCoords.forEach(d => {
-    const color = d.score >= 70 ? "#ef4444" : d.score >= 45 ? "#f59e0b" : "#64748b";
-    const r = d.score >= 70 ? 11 : d.score >= 45 ? 8 : 6;
-    const m = L.circleMarker([d.lat, d.lng], {radius:r, fillColor:color, color:"#0f172a", weight:2, opacity:1, fillOpacity:0.85}).addTo(mapa);
-    m.bindPopup(`<b>${d.nombre}</b><br><span class="popup-score" style="color:${color}">${d.score} pts — ${d.tier}</span><div class="popup-mot">${d.motivos||""}</div><div class="popup-mot" style="color:#4ade80">Pierde ~${d.perdida_mes||"?"} EUR/mes | Propuesta: ${d.propuesta||""}</div>${d.telefono?`<br>📞 ${d.telefono}`:""}${d.maps_url?`<br><a href="${d.maps_url}" target="_blank">Google Maps ↗</a>`:""}`);
-    bounds.push([d.lat, d.lng]);
-  });
-  mapa.fitBounds(bounds, {padding:[30,30]});
-}
-document.getElementById("buscar").oninput = e => { busqueda = e.target.value.toLowerCase(); render(); };
-// ===== AUTH + SCANNER (solo administrador logueado) =====
-const sbAuth = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-function authUI(session){
-  document.getElementById("auth").style.display = session ? "none" : "block";
-  document.getElementById("scanner").style.display = session ? "block" : "none";
-  if (session) document.getElementById("userEmail").textContent = "(" + session.user.email + ")";
-}
-document.getElementById("loginForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const { error } = await sbAuth.auth.signInWithPassword({
-    email: document.getElementById("loginEmail").value.trim(),
-    password: document.getElementById("loginPass").value });
-  if (error) alert("Error de acceso: " + error.message);
-};
-document.getElementById("btnLogout").onclick = async () => { await sbAuth.auth.signOut(); };
-document.getElementById("scanForm").onsubmit = async (e) => {
-  e.preventDefault();
-  const msg = document.getElementById("scanMsg");
-  const { data: { session } } = await sbAuth.auth.getSession();
-  if (!session) { msg.textContent = "Sesión expirada, vuelve a entrar."; return; }
-  msg.style.color = "#fbbf24"; msg.textContent = "⏳ Escaneando… (1-2 minutos, no cierres la página)";
-  radarOn("🛰️  ESCANEANDO " + document.getElementById("scanQuery").value.toUpperCase() + " ...");
-  try {
-    const r = await fetch("/api/scan", { method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
-      body: JSON.stringify({ query: document.getElementById("scanQuery").value.trim(),
-                             ciudad: document.getElementById("scanCiudad").value.trim(),
-                             max: Number(document.getElementById("scanMax").value) }) });
-    const j = await r.json();
-    if (!r.ok) { msg.style.color = "#f87171"; msg.textContent = "Error: " + (j.error || r.status); return; }
-    msg.style.color = "#4ade80";
-    msg.textContent = (j.ok ? "✅ " : "❌ ") + "Procesados " + j.escaneados + " | ya existian: " + (j.yaExistian ?? "?") + " | guardados: " + (j.guardados ?? "?") + (j.upErrMsg ? " | ERROR: " + j.upErrMsg : "") + " | Total en base: " + j.total_bd;
-    await cargar();
-  } catch (err) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + err.message; } finally { radarOff(); }
-};
-(async () => { const { data: { session } } = await sbAuth.auth.getSession(); authUI(session);
-  sbAuth.auth.onAuthStateChange((_e, s) => authUI(s)); })();
 // ===== RADAR DE INTENCION =====
 let senales = [], filtroIntent = "";
 function renderIntentos(){
@@ -327,6 +285,7 @@ async function cargarIntentos(){
   renderIntentos();
 }
 document.getElementById("buscarIntent").oninput = e => { filtroIntent = e.target.value.toLowerCase(); renderIntentos(); };
+
 document.getElementById("btnIntent").onclick = async () => {
   const msg = document.getElementById("intentMsg");
   const { data: { session } } = await sb.auth.getSession();
@@ -342,47 +301,82 @@ document.getElementById("btnIntent").onclick = async () => {
     await cargarIntentos();
   } catch (e) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + e.message; } finally { radarOff(); }
 };
+
+document.querySelectorAll("button.filtro[data-f]").forEach(b => b.onclick = () => {
+  document.querySelectorAll("button.filtro[data-f]").forEach(x => x.classList.remove("activo"));
+  b.classList.add("activo"); filtro = b.dataset.f; render();
+});
+document.getElementById("buscar").oninput = e => { busqueda = e.target.value.toLowerCase(); render(); };
+
 function radarOn(msg){ document.getElementById("radarStatus").textContent = msg || "BUSCANDO..."; document.getElementById("radarOverlay").style.display = "flex"; }
 function radarOff(){ document.getElementById("radarOverlay").style.display = "none"; }
-function recalcStats(){
-  document.getElementById("sTotal").textContent = datos.length;
-  document.getElementById("sHot").textContent = datos.filter(d=>d.tier==="CALIENTE").length;
-  document.getElementById("sWarm").textContent = datos.filter(d=>d.tier==="TIBIO").length;
-  document.getElementById("sTop").textContent = datos.length ? datos[0].score : 0;
+
+async function cargarIntentosViejo(){}
+
+// ===== AUTH + SCANNER (solo administrador logueado) =====
+const sbAuth = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+function authUI(session){
+  document.getElementById("auth").style.display = session ? "none" : "block";
+  document.getElementById("scanner").style.display = session ? "block" : "none";
+  if (session) document.getElementById("userEmail").textContent = "(" + session.user.email + ")";
 }
-window.descartar = async (tipo, id) => {
-  if (!confirm("¿Descartar " + (tipo === "lead" ? "este lead" : "esta señal") + "? Se borrará de tu base de datos.")) return;
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { alert("Sesión expirada"); return; }
-  const r = await fetch("/api/descartar", { method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
-    body: JSON.stringify({ tipo, id }) });
-  if (r.ok) {
-    if (tipo === "lead") { datos = datos.filter(d => d.id !== id); render(); recalcStats(); }
-    else { senales = senales.filter(s => s.id !== id); renderIntentos(); }
-  } else { const j = await r.json().catch(()=>({})); alert("Error: " + (j.error || r.status)); }
+document.getElementById("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const { error } = await sbAuth.auth.signInWithPassword({
+    email: document.getElementById("loginEmail").value.trim(),
+    password: document.getElementById("loginPass").value });
+  if (error) alert("Error de acceso: " + error.message);
 };
-document.getElementById("btnEmails").onclick = async () => {
-  const msg = document.getElementById("emailMsg");
+document.getElementById("btnLogout").onclick = async () => { await sbAuth.auth.signOut(); };
+document.getElementById("scanForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById("scanMsg");
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { msg.textContent = "Sesion expirada"; return; }
-  msg.style.color = "#fbbf24"; msg.textContent = "Buscando emails en las webs (25 en cada tanda)…";
-  radarOn("📧  BUSCANDO EMAILS EN LAS WEBS ...");
-  let total = 0, ultimo = 25;
-  while (ultimo === 25) {
-    try {
-      const r = await fetch("/api/enriquecer", { method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token } });
-      const j = await r.json();
-      if (!r.ok) { msg.style.color = "#f87171"; msg.textContent = "Error: " + (j.error || r.status); break; }
-      total += j.encontrados || 0; ultimo = j.procesados || 0;
-      msg.textContent = "Emails encontrados hasta ahora: " + total + " …";
-      if (ultimo < 25) { msg.style.color = "#4ade80"; msg.textContent = "✅ Listo: " + total + " emails nuevos. Queda ninguno pendiente."; break; }
-    } catch (e) { msg.style.color = "#f87171"; msg.textContent = "Error de red"; break; }
-  }
-  radarOff();
-  await cargar();
+  if (!session) { msg.textContent = "Sesión expirada, vuelve a entrar."; return; }
+  msg.style.color = "#fbbf24"; msg.textContent = "⏳ Escaneando… (1-2 minutos, no cierres la página)";
+  radarOn("🛰️  ESCANEANDO " + document.getElementById("scanQuery").value.toUpperCase() + " ...");
+  try {
+    const r = await fetch("/api/scan", { method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
+      body: JSON.stringify({ query: document.getElementById("scanQuery").value.trim(),
+                             ciudad: document.getElementById("scanCiudad").value.trim(),
+                             max: Number(document.getElementById("scanMax").value) }) });
+    const j = await r.json();
+    if (!r.ok) { msg.style.color = "#f87171"; msg.textContent = "Error: " + (j.error || r.status); return; }
+    msg.style.color = "#4ade80";
+    msg.textContent = (j.ok ? "✅ " : "❌ ") + "Procesados " + j.escaneados + " | ya existian: " + (j.yaExistian ?? "?") + " | guardados: " + (j.guardados ?? "?") + (j.upErrMsg ? " | ERROR: " + j.upErrMsg : "") + " | Total en base: " + j.total_bd;
+    await cargar();
+  } catch (err) { msg.style.color = "#f87171"; msg.textContent = "Error de red: " + err.message; } finally { radarOff(); }
 };
+
+// ===== ASESOR IA (Kimi) =====
+async function llamarAsesor(modo, pregunta){
+  const out = document.getElementById("asesorOut");
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { out.style.color = "#f87171"; out.textContent = "Entra con tu login primero."; return; }
+  out.style.color = "#64748b";
+  out.textContent = "Pensando...\n\n";
+  radarOn(modo === "chat" ? "🤖  KIMI ESTA PENSANDO ..." : "🤖  PREPARANDO TU BRIEFING ...");
+  try {
+    const r = await fetch("/api/asesor", { method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
+      body: JSON.stringify({ modo, pregunta: pregunta || "" }) });
+    const j = await r.json();
+    if (!r.ok) { out.style.color = "#f87171"; out.textContent = "Error: " + (j.error || r.status); return; }
+    out.style.color = "#e2e8f0";
+    out.textContent = j.respuesta;
+  } catch (e) { out.style.color = "#f87171"; out.textContent = "Error de red: " + e.message; }
+  finally { radarOff(); }
+}
+document.getElementById("btnBriefing").onclick = () => llamarAsesor("briefing");
+document.getElementById("btnAsesor").onclick = () => {
+  const q = document.getElementById("asesorInput").value.trim();
+  if (!q) return;
+  document.getElementById("asesorInput").value = "";
+  llamarAsesor("chat", q);
+};
+document.getElementById("asesorInput").onkeydown = e => { if (e.key === "Enter") document.getElementById("btnAsesor").click(); };
+
 // ===== PITCH PERSONALIZADO POR LEAD =====
 let pitchLead = null, pitchTab = "llamada";
 const VERT_NOMBRE = { dental: "clinicas dentales", restaurante: "restaurantes", estetica: "peluquerias y esteticas", taller: "talleres", inmobiliaria: "inmobiliarias" };
@@ -453,30 +447,48 @@ document.getElementById("btnCopiarPitch").onclick = () => {
   el.value = localStorage.getItem(idI) || "";
   el.oninput = () => { localStorage.setItem(idI, el.value); pintarPitch(); };
 });
-// ===== ASESOR IA (Kimi) =====
-async function llamarAsesor(modo, pregunta){
-  const out = document.getElementById("asesorSalida");
+
+document.getElementById("btnEmails").onclick = async () => {
+  const msg = document.getElementById("emailMsg");
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { out.style.display = "block"; out.textContent = "Sesion expirada, vuelve a entrar."; return; }
-  out.style.display = "block";
-  out.style.color = "#94a3b8";
-  out.textContent = modo === "briefing" ? "☀️ Kimi esta preparando tu briefing… (5-15 segundos)" : "🤖 Kimi esta pensando…";
-  try {
-    const r = await fetch("/api/asesor", { method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
-      body: JSON.stringify({ modo, pregunta: pregunta || "" }) });
-    const j = await r.json();
-    if (!r.ok) { out.textContent = "Error: " + (j.error || r.status); return; }
-    out.style.color = "#e2e8f0";
-    out.textContent = j.respuesta;
-  } catch (e) { out.textContent = "Error de red: " + e.message; }
-}
-document.getElementById("btnBriefing").onclick = () => llamarAsesor("briefing");
-document.getElementById("btnAsesor").onclick = () => {
-  const q = document.getElementById("asesorInput").value.trim();
-  if (q) { llamarAsesor("chat", q); document.getElementById("asesorInput").value = ""; }
+  if (!session) { msg.textContent = "Sesion expirada"; return; }
+  msg.style.color = "#fbbf24"; msg.textContent = "Buscando emails en las webs (25 en cada tanda)…";
+  radarOn("📧  BUSCANDO EMAILS EN LAS WEBS ...");
+  let total = 0, ultimo = 25;
+  while (ultimo === 25) {
+    try {
+      const r = await fetch("/api/enriquecer", { method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token } });
+      const j = await r.json();
+      if (!r.ok) { msg.style.color = "#f87171"; msg.textContent = "Error: " + (j.error || r.status); break; }
+      total += j.encontrados || 0; ultimo = j.procesados || 0;
+      msg.textContent = "Emails encontrados hasta ahora: " + total + " …";
+      if (ultimo < 25) { msg.style.color = "#4ade80"; msg.textContent = "✅ Listo: " + total + " emails nuevos. Queda ninguno pendiente."; break; }
+    } catch (e) { msg.style.color = "#f87171"; msg.textContent = "Error de red"; break; }
+  }
+  radarOff();
+  await cargar();
 };
-document.getElementById("asesorInput").onkeydown = e => { if (e.key === "Enter") document.getElementById("btnAsesor").click(); };
+
+function recalcStats(){
+  document.getElementById("sTotal").textContent = datos.length;
+  document.getElementById("sHot").textContent = datos.filter(d=>d.tier==="CALIENTE").length;
+  document.getElementById("sWarm").textContent = datos.filter(d=>d.tier==="TIBIO").length;
+  document.getElementById("sTop").textContent = datos.length ? datos[0].score : 0;
+}
+window.descartar = async (tipo, id) => {
+  if (!confirm("¿Descartar " + (tipo === "lead" ? "este lead" : "esta señal") + "? Se borrará de tu base de datos.")) return;
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { alert("Sesión expirada"); return; }
+  const r = await fetch("/api/descartar", { method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
+    body: JSON.stringify({ tipo, id }) });
+  if (r.ok) {
+    if (tipo === "lead") { datos = datos.filter(d => d.id !== id); render(); recalcStats(); }
+    else { senales = senales.filter(s => s.id !== id); renderIntentos(); }
+  } else { const j = await r.json().catch(()=>({})); alert("Error: " + (j.error || r.status)); }
+};
+
 document.getElementById("btnBriefing").onclick = async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { alert("Entra con tu login primero (arriba del todo)."); return; }
@@ -500,6 +512,20 @@ document.getElementById("btnCopiarBriefing").onclick = () => {
     setTimeout(() => btn.textContent = viejo, 1300);
   });
 };
+window.marcarContactado = async (id) => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { alert("Sesion expirada"); return; }
+  const r = await fetch("/api/marcar", { method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
+    body: JSON.stringify({ id }) });
+  const j = await r.json().catch(() => ({}));
+  if (r.ok) {
+    const d = datos.find(x => x.id === id);
+    if (d) { d.contactado_en = j.contactado ? new Date().toISOString() : null; render(); }
+  } else alert("Error: " + (j.error || r.status));
+};
+(async () => { const { data: { session } } = await sbAuth.auth.getSession(); authUI(session);
+  sbAuth.auth.onAuthStateChange((_e, s) => authUI(s)); })();
 cargar();
 cargarIntentos();
 </script>

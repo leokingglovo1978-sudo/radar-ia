@@ -21,9 +21,10 @@ const SYSTEM_BRIEFING = SYSTEM_BASE + " " + [
 
 const SYSTEM_CHAT = SYSTEM_BASE + " " + [
   "MODO CHAT: responde la pregunta concreta de Leonard usando el JSON de datos.",
-  "Si pregunta por leads 'viejos' o a quien contactar, interpreta 'viejos' como leads que llevan mas tiempo sin contacto o que aun no ha tocado: prioriza los calientes y tibios CON telefono que no hayan sido contactados recientemente (no tenemos fecha de ultimo contacto: indica que conviene anotarlo, y ofrece la lista de calientes/tibios con telefono).",
+  "REGLA DE ORO: nunca digas que 'no hay leads', 'no hay nada que hacer' o 'no hay contactos'. El radar tiene leads (ver total_leads y leads_pendientes). Siempre hay trabajo: prioriza los pendientes.",
+  "CAMPO contactado_en: fecha en que Leonard contacto al lead por ultima vez, o null si aun NO ha sido contactado. 'Leads viejos', 'pendientes' o 'a quien contacto' = leads con contactado_en null o de hace mas de 7 dias. Ofrece los 5 mejores CON telefono, ordenados por score, cada uno con su argumento (motivos/quote/perdida_mes). Indica tambien cuantos quedan pendientes en total.",
   "Si pide redactar un mensaje, entregalo listo para copiar.",
-  "Si la pregunta no se puede responder con los datos, dilo y ofrece lo mas cercano.",
+  "Si la pregunta no se puede responder con los datos, dilo en una linea y ofrece lo mas cercano util.",
   "Termina siempre con UNA sugerencia de siguiente accion concreta."
 ].join(" ");
 
@@ -46,7 +47,7 @@ module.exports = async (req, res) => {
 
   const sb = createClient(SB_URL, SB_SERVICE);
   const { data: leads } = await sb.from("businesses")
-    .select("nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,zona,ciudad")
+    .select("nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,zona,ciudad,contactado_en")
     .order("score", { ascending: false }).limit(30);
   const hace48h = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
   const { data: senales } = await sb.from("intent_signals")
@@ -54,9 +55,12 @@ module.exports = async (req, res) => {
     .order("fecha", { ascending: false }).limit(15);
 
   const hoy = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  const hace7dias = Date.now() - 7 * 24 * 3600 * 1000;
+  const pendientes = (leads || []).filter(l => !l.contactado_en || new Date(l.contactado_en).getTime() < hace7dias).length;
   const contexto = JSON.stringify({
     fecha_hoy: hoy,
     total_leads: (leads || []).length,
+    leads_pendientes_contacto: pendientes,
     leads: leads || [],
     senales_ultimas_48h: senales || []
   });
