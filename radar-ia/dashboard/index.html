@@ -32,6 +32,9 @@
   .zonacol { color:#a5b4fc; font-size:12px; max-width:110px; }
   .euros { color:#4ade80; font-weight:800; font-size:14px; white-space:nowrap; }
   .propuesta { color:#e2e8f0; font-size:12px; max-width:150px; }
+  #briefingModal { position: fixed; inset: 0; background: rgba(2,6,16,0.9); z-index: 10000; display: none; align-items: center; justify-content: center; }
+  .briefing-card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; width: min(680px, 94vw); max-height: 88vh; overflow: auto; padding: 22px 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  #briefingTexto { white-space: pre-wrap; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 16px 18px; font-size: 13.5px; line-height: 1.7; color: #d7e3f4; min-height: 200px; }
   #pitchModal { position: fixed; inset: 0; background: rgba(2,6,16,0.88); z-index: 10000; display: none; align-items: center; justify-content: center; }
   .pitch-card { background: #1e293b; border: 1px solid #334155; border-radius: 14px; width: min(700px, 94vw); max-height: 88vh; overflow: auto; padding: 20px 22px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
   .pitch-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -65,6 +68,20 @@
   <span class="pill p-orange">🟡 TIBIO</span>
   <span class="pill p-gray">⚪ BAJO</span>
 </header>
+
+<div id="briefingModal">
+  <div class="briefing-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <b style="font-size:16px;">🤖 Briefing del dia</b>
+      <button onclick="document.getElementById('briefingModal').style.display='none'" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div id="briefingTexto"></div>
+    <div style="display:flex; gap:10px; margin-top:12px; align-items:center;">
+      <button class="filtro activo" id="btnCopiarBriefing">📋 Copiar briefing</button>
+      <span id="briefingMotor" style="font-size:11px; color:#64748b;"></span>
+    </div>
+  </div>
+</div>
 
 <div id="pitchModal">
   <div class="pitch-card">
@@ -134,6 +151,18 @@
   </div>
 </div>
 
+<div style="padding:16px 24px;">
+  <div class="card" style="max-width:960px;">
+    <b>🤖 Asesor IA</b> <span style="color:#64748b; font-size:12px;">tu briefing diario y consultas sobre tus leads — cerebro: Kimi</span>
+    <button id="btnBriefing" class="filtro activo" style="margin-left:10px;">☀️ Briefing de hoy</button>
+    <div id="asesorSalida" style="display:none; margin-top:12px; font-size:13.5px; line-height:1.65; white-space:pre-wrap; color:#e2e8f0; background:#0f172a; border:1px solid #334155; border-radius:10px; padding:16px 18px; min-height:70px;"></div>
+    <div style="display:flex; gap:8px; margin-top:12px;">
+      <input id="asesorInput" placeholder="Pregunta sobre tus leads (ej: ¿a quién llamo hoy? ¿qué señales hay?)" style="flex:1;">
+      <button id="btnAsesor" class="filtro activo">Preguntar</button>
+    </div>
+  </div>
+</div>
+
 <div class="stats">
   <div class="card"><b id="sTotal">–</b>negocios</div>
   <div class="card"><b id="sHot" style="color:#f87171">–</b>calientes</div>
@@ -147,6 +176,7 @@
   <button class="filtro" data-f="TIBIO">🟡 Tibios</button>
   <button class="filtro" data-f="BAJO">⚪ Bajos</button>
   <button class="filtro" id="btnEmails" style="border-color:#334155;">📧 Buscar emails</button>
+  <button class="filtro" id="btnBriefing" style="border-color:#334155;">🤖 Briefing de hoy</button>
   <span id="emailMsg" style="font-size:12px;color:#94a3b8;align-self:center;"></span>
   <input id="buscar" placeholder="🔍 Buscar por nombre...">
 </div>
@@ -423,6 +453,53 @@ document.getElementById("btnCopiarPitch").onclick = () => {
   el.value = localStorage.getItem(idI) || "";
   el.oninput = () => { localStorage.setItem(idI, el.value); pintarPitch(); };
 });
+// ===== ASESOR IA (Kimi) =====
+async function llamarAsesor(modo, pregunta){
+  const out = document.getElementById("asesorSalida");
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { out.style.display = "block"; out.textContent = "Sesion expirada, vuelve a entrar."; return; }
+  out.style.display = "block";
+  out.style.color = "#94a3b8";
+  out.textContent = modo === "briefing" ? "☀️ Kimi esta preparando tu briefing… (5-15 segundos)" : "🤖 Kimi esta pensando…";
+  try {
+    const r = await fetch("/api/asesor", { method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
+      body: JSON.stringify({ modo, pregunta: pregunta || "" }) });
+    const j = await r.json();
+    if (!r.ok) { out.textContent = "Error: " + (j.error || r.status); return; }
+    out.style.color = "#e2e8f0";
+    out.textContent = j.respuesta;
+  } catch (e) { out.textContent = "Error de red: " + e.message; }
+}
+document.getElementById("btnBriefing").onclick = () => llamarAsesor("briefing");
+document.getElementById("btnAsesor").onclick = () => {
+  const q = document.getElementById("asesorInput").value.trim();
+  if (q) { llamarAsesor("chat", q); document.getElementById("asesorInput").value = ""; }
+};
+document.getElementById("asesorInput").onkeydown = e => { if (e.key === "Enter") document.getElementById("btnAsesor").click(); };
+document.getElementById("btnBriefing").onclick = async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { alert("Entra con tu login primero (arriba del todo)."); return; }
+  radarOn("🤖  KIMI ESTA PREPARANDO TU BRIEFING ...");
+  try {
+    const r = await fetch("/api/asesor", { method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token } });
+    const j = await r.json();
+    if (!r.ok) { alert("Error: " + (j.error || r.status)); return; }
+    document.getElementById("briefingTexto").textContent = j.briefing;
+    document.getElementById("briefingMotor").textContent = "Motor: " + (j.motor || "");
+    document.getElementById("briefingModal").style.display = "flex";
+  } catch (e) { alert("Error de red: " + e.message); }
+  finally { radarOff(); }
+};
+document.getElementById("btnCopiarBriefing").onclick = () => {
+  navigator.clipboard.writeText(document.getElementById("briefingTexto").textContent).then(() => {
+    const btn = document.getElementById("btnCopiarBriefing");
+    const viejo = btn.textContent;
+    btn.textContent = "✅ Copiado";
+    setTimeout(() => btn.textContent = viejo, 1300);
+  });
+};
 cargar();
 cargarIntentos();
 </script>
