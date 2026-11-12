@@ -73,8 +73,15 @@ module.exports = async (req, res) => {
 
   if (!leads || !leads.length) return res.status(500).json({ error: "El asesor no recibió leads de Supabase (tabla businesses vacía o sin permisos). Revisa la base de datos." });
 
+  // conteo real de pendientes en toda la tabla
+  const hace7diasISO = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  const { count: pendientesReales } = await sb.from("businesses")
+    .select("id", { count: "exact", head: true })
+    .or("contactado_en.is.null,contactado_en.lt." + hace7diasISO);
+
   const hoy = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
   const pend = listaPendientes(leads);
+  pend.total = pendientesReales !== null ? pendientesReales : pend.total;
 
   const autoridad = [
     "=== DATOS PRECALCULADOS POR EL SERVIDOR (son la verdad; NO los contradigas jamas) ===",
@@ -123,5 +130,6 @@ module.exports = async (req, res) => {
   }
 
   if (!respuesta) return res.status(500).json({ error: "Ninguna IA respondio. Revisa MOONSHOT_API_KEY y OPENAI_API_KEY en Vercel." });
+  respuesta = respuesta.replace(/\*\*/g, "").replace(/^#+\s*/gm, "");
   return res.json({ ok: true, respuesta, briefing: respuesta, motor, modo });
 };
