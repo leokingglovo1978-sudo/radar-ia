@@ -1,5 +1,4 @@
-// api/asesor.js — Asesor IA: chat + briefing. Cerebro Kimi/Moonshot (respaldo OpenAI).
-// v3: los pendientes se calculan EN EL SERVIDOR y se inyectan como dato irrefutable.
+// api/asesor.js — Asesor IA v4: chat + briefing, robusto ante columnas que faltan y con errores visibles.
 const { createClient } = require("@supabase/supabase-js");
 const SB_URL = process.env.SUPABASE_URL;
 const SB_ANON = process.env.SUPABASE_ANON_KEY;
@@ -13,8 +12,8 @@ const SYSTEM_BASE = [
 
 const SYSTEM_CHAT = SYSTEM_BASE + " " + [
   "MODO CHAT: responde la pregunta de Leonard.",
-  "PROHIBIDO responder que 'no hay leads', 'no hay nada pendiente' o similares: el bloque DATOS PRECALCULADOS del mensaje es la verdad del servidor y siempre contiene pendientes. Usalo.",
-  "Si pregunta por 'leads viejos', 'pendientes', 'a quien contacto' o similar: presenta los pendientes de la lista precalculada (los 5-6 primeros con telefono), cada uno con su argumento, y menciona el total que queda.",
+  "PROHIBIDO responder que 'no hay leads' o 'no hay nada pendiente': el bloque DATOS PRECALCULADOS es la verdad del servidor; si dice que hay pendientes, hay pendientes. Usa la lista.",
+  "Si pregunta por 'leads viejos', 'pendientes', 'a quien contacto': presenta los de la lista precalculada (los 5-6 primeros con telefono), cada uno con su argumento, y menciona el total pendiente.",
   "Si pide redactar un mensaje, entregalo listo para copiar.",
   "Cierra siempre con UNA siguiente accion concreta."
 ].join(" ");
@@ -37,6 +36,9 @@ function listaPendientes(leads){
   return { total: pend.length, top };
 }
 
+const COLS_CON_CONTACTO = "nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,zona,ciudad,contactado_en";
+const COLS_BASICAS = "nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,zona,ciudad";
+
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -54,20 +56,29 @@ module.exports = async (req, res) => {
   const pregunta = (body.pregunta || "").toString().slice(0, 500);
 
   const sb = createClient(SB_URL, SB_SERVICE);
-  const { data: leads } = await sb.from("businesses")
-    .select("nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,zona,ciudad,contactado_en")
-    .order("score", { ascending: false }).limit(30);
+
+  // Leads: intenta con contactado_en; si la columna no existe, reintenta sin ella
+  let leads = null, errLeads = null;
+  ({ data: leads, error: errLeads } = await sb.from("businesses").select(COLS_CON_CONTACTO).order("score", { ascending: false }).limit(30));
+  if (errLeads) {
+    const r2 = await sb.from("businesses").select(COLS_BASICAS).order("score", { ascending: false }).limit(30);
+    if (r2.error) return res.status(500).json({ error: "Error leyendo leads en Supabase: " + r2.error.message + " (ejecuta: alter table businesses add column if not exists contactado_en timestamptz;)" });
+    leads = r2.data;
+  }
+
   const hace48h = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
   const { data: senales } = await sb.from("intent_signals")
     .select("titulo,keyword,zona,fecha").gte("fecha", hace48h)
     .order("fecha", { ascending: false }).limit(15);
+
+  if (!leads || !leads.length) return res.status(500).json({ error: "El asesor no recibió leads de Supabase (tabla businesses vacía o sin permisos). Revisa la base de datos." });
 
   const hoy = new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
   const pend = listaPendientes(leads);
 
   const autoridad = [
     "=== DATOS PRECALCULADOS POR EL SERVIDOR (son la verdad; NO los contradigas jamas) ===",
-    "total_leads: " + (leads || []).length,
+    "total_leads: " + leads.length,
     "leads_pendientes_de_contacto: " + pend.total + " (sin contactar, o contactados hace mas de 7 dias)",
     "TOP PENDIENTES CON TELEFONO:",
     pend.top.join("\n") || "- (ninguno con telefono)",
@@ -75,9 +86,9 @@ module.exports = async (req, res) => {
   ].join("\n");
 
   const contexto = JSON.stringify({
-    fecha_hoy: hoy, total_leads: (leads || []).length,
+    fecha_hoy: hoy, total_leads: leads.length,
     leads_pendientes_contacto: pend.total,
-    leads: leads || [], senales_ultimas_48h: senales || []
+    leads, senales_ultimas_48h: senales || []
   });
 
   const system = modo === "chat" ? SYSTEM_CHAT : SYSTEM_BRIEFING;
