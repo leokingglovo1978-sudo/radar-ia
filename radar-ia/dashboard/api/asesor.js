@@ -36,8 +36,8 @@ function listaPendientes(leads){
   return { total: pend.length, top };
 }
 
-const COLS_CON_CONTACTO = "nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,zona,ciudad,contactado_en";
-const COLS_BASICAS = "nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,zona,ciudad";
+const COLS_CON_CONTACTO = "nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,ciudad,contactado_en";
+const COLS_BASICAS = "nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,ciudad";
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
