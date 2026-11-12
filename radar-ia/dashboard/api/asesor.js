@@ -14,6 +14,7 @@ const SYSTEM_CHAT = SYSTEM_BASE + " " + [
   "MODO CHAT: responde la pregunta de Leonard.",
   "PROHIBIDO responder que 'no hay leads' o 'no hay nada pendiente': el bloque DATOS PRECALCULADOS es la verdad del servidor; si dice que hay pendientes, hay pendientes. Usa la lista.",
   "Si pregunta por 'leads viejos', 'pendientes', 'a quien contacto': presenta los de la lista precalculada (los 5-6 primeros con telefono), cada uno con su argumento, y menciona el total pendiente.",
+  "Si pide leads 'con WhatsApp': explica en UNA linea que no podemos verificar WhatsApp, pero los moviles (6xx/7xx) casi siempre lo tienen y los fijos (950...) no reciben WhatsApp. Usa la lista de moviles; si no hay moviles entre los pendientes, dilo y ofrece los mejores con fijo recomendando LLAMADA o visita (que tambien funciona).",
   "Si pide redactar un mensaje, entregalo listo para copiar.",
   "Cierra siempre con UNA siguiente accion concreta."
 ].join(" ");
@@ -26,14 +27,22 @@ const SYSTEM_BRIEFING = SYSTEM_BASE + " " + [
   "- SECCION 3 - ACCIONES RAPIDAS: 2 tareas extra."
 ].join(" ");
 
+function esMovil(tel){
+  const d = (tel || "").replace(/\D/g, "").replace(/^34/, "");
+  return /^[67]/.test(d);
+}
+function ficha(l){
+  return "- " + l.nombre + " (" + l.score + " pts, " + (l.tier || "") + ", tel " + l.telefono +
+    (l.perdida_mes ? ", pierde ~" + l.perdida_mes + " EUR/mes" : "") +
+    (l.quote ? ", reseña: \"" + String(l.quote).slice(0, 90) + "\"" : "") + ")";
+}
 function listaPendientes(leads){
   const hace7dias = Date.now() - 7 * 24 * 3600 * 1000;
   const pend = (leads || []).filter(l => !l.contactado_en || new Date(l.contactado_en).getTime() < hace7dias);
-  const top = pend.filter(l => l.telefono).slice(0, 6).map(l =>
-    "- " + l.nombre + " (" + l.score + " pts, " + (l.tier || "") + ", tel " + l.telefono +
-    (l.perdida_mes ? ", pierde ~" + l.perdida_mes + " EUR/mes" : "") +
-    (l.quote ? ", reseña: \"" + String(l.quote).slice(0, 90) + "\"" : "") + ")");
-  return { total: pend.length, top };
+  const conTel = pend.filter(l => l.telefono);
+  const top = conTel.slice(0, 6).map(ficha);
+  const moviles = conTel.filter(l => esMovil(l.telefono)).slice(0, 8).map(ficha);
+  return { total: pend.length, top, moviles };
 }
 
 const COLS_CON_CONTACTO = "nombre,score,tier,telefono,email,categoria,motivos,quote,perdida_mes,propuesta,ciudad,contactado_en";
@@ -89,6 +98,8 @@ module.exports = async (req, res) => {
     "leads_pendientes_de_contacto: " + pend.total + " (sin contactar, o contactados hace mas de 7 dias)",
     "TOP PENDIENTES CON TELEFONO:",
     pend.top.join("\n") || "- (ninguno con telefono)",
+    "TOP PENDIENTES CON MOVIL (empiezan por 6 o 7: casi seguro que tienen WhatsApp):",
+    pend.moviles.join("\n") || "- (ninguno con movil entre los pendientes: todos son fijos 950...)",
     "=== FIN DATOS PRECALCULADOS ==="
   ].join("\n");
 
